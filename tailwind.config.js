@@ -4,12 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        luxury: {
-          bg: "#09090B", 
-          card: "#18181B", 
-          gold: "#D4AF37", 
-          silver: "#A1A1AA", 
-          white: "#F4F4F5",
+        brand: {
+          purple: "#7C2D12",
+          main: "#8B5CF6",
+          light: "#F5F3FF",
+          pink: "#EC4899",
+          dark: "#1E1B4B",
         },
       },
       fontFamily: {
