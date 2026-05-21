@@ -1,9 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-body {
-  background-color: #09090b;
-  color: #f4f4f5;
-  font-family: "Inter", sans-serif;
+@theme {
+  --color-brand-base: #F8F9FC;
+  --color-brand-purple: #7C3AED;
+  --color-brand-card: #FFFFFF;
+  
+  --radius-brand-card: 32px;
 }
