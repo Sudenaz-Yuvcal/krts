@@ -1,14 +1,14 @@
-import React from 'react';
-import { Search, Bell, Wallet, ChevronDown } from 'lucide-react';
+import React from "react";
+import { Search, Bell, Wallet, ChevronDown } from "lucide-react";
 
 export const Header: React.FC = () => {
   return (
     <header className="h-24 bg-transparent flex items-center justify-between px-12 z-20">
       <div className="relative w-96">
         <Search className="w-4.5 h-4.5 text-slate-400 absolute left-5 top-1/2 -translate-y-1/2" />
-        <input 
-          type="text" 
-          placeholder="Müşteri, randevu veya hizmet ara..." 
+        <input
+          type="text"
+          placeholder="Müşteri, randevu veya hizmet ara..."
           className="w-full bg-white pl-13 pr-5 py-3.5 rounded-2xl border border-slate-100/70 focus:outline-none focus:border-purple-300 focus:bg-white text-sm shadow-[0_4px_20px_rgba(0,0,0,0.01)] transition-all placeholder:text-slate-400 font-medium"
         />
       </div>
@@ -19,8 +19,9 @@ export const Header: React.FC = () => {
             <Wallet className="w-4.5 h-4.5" />
           </div>
           <div>
-            <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">Dolap Güvencesi</div>
-            <div className="text-sm font-black text-slate-800">₺3.678,36</div>
+            <div className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
+              -----
+            </div>
           </div>
         </div>
 
@@ -30,13 +31,10 @@ export const Header: React.FC = () => {
         </button>
 
         <div className="flex items-center gap-3.5 cursor-pointer group pl-2">
-          <img 
-            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop" 
-            alt="Janice" 
-            className="w-11 h-11 rounded-2xl object-cover ring-4 ring-purple-50 shadow-md transition-transform group-hover:scale-105"
-          />
           <div className="flex items-center gap-1.5">
-            <span className="text-sm font-bold text-slate-800 group-hover:text-slate-900">Janice</span>
+            <span className="text-sm font-bold text-slate-800 group-hover:text-slate-900">
+              krts{" "}
+            </span>
             <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-600 transition-transform" />
           </div>
         </div>
