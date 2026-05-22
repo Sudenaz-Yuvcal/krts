@@ -13,7 +13,7 @@ export const Sidebar = ({ activeTab, setActiveTab }: SidebarProps) => {
     { id: 'appointments', label: 'Randevular', icon: CalendarDays },
     { id: 'staff', label: 'Çalışanlar', icon: Users },
     { id: 'reviews', label: 'Yorumlar', icon: MessageSquare },
-    { id: 'sales', label: 'Ürünler', icon: ShoppingBag },
+    { id: 'products', label: 'Ürünler', icon: ShoppingBag },
   ];
 
   return (
