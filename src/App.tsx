@@ -7,6 +7,7 @@ import { Reviews } from "./pages/HairdresserPanel/Reviews";
 import { Services } from "./pages/HairdresserPanel/Services";
 import { Products } from "./pages/HairdresserPanel/Products";
 import { Appointments } from "./pages/HairdresserPanel/Appointments";
+import { Dashboard } from "./pages/HairdresserPanel/Dashboard";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -14,16 +15,7 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return (
-          <div className="space-y-6 animate-fadeIn">
-            <h2 className="text-3xl font-black tracking-tight text-slate-800">
-              Panel Özeti
-            </h2>
-            <div className="bg-white p-8 rounded-[32px] shadow-xs border border-slate-100 text-slate-400 font-bold text-sm">
-              Genel performans ve analizlerin listelendiği ana gösterge paneli.
-            </div>
-          </div>
-        );
+        return <Dashboard />;
 
       case "salon":
         return <SalonDetails />;
@@ -44,16 +36,7 @@ export default function App() {
         return <Products />;
 
       default:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-3xl font-black tracking-tight text-slate-800">
-              Panel Özeti
-            </h2>
-            <div className="bg-white p-8 rounded-[32px] shadow-xs border border-slate-100 text-slate-400 font-bold text-sm">
-              Genel performans ve analizlerin listelendiği ana gösterge paneli.
-            </div>
-          </div>
-        );
+        return <Dashboard />;
     }
   };
 
