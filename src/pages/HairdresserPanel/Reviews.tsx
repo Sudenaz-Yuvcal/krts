@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { ReviewsSummary } from "../../sections/reviews/reviews-summary";
 import { ReviewsList } from "../../sections/reviews/reviews-list";
 import { ReviewsReplyModal } from "../../sections/reviews/reviews-reply-modal";
 
-export const Reviews: React.FC = () => {
+export const Reviews = () => {
   const [reviews, setReviews] = useState([
     {
       id: "rev-1",

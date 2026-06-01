@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { MessageCircle, X, Send } from "lucide-react";
@@ -8,12 +8,11 @@ interface ModalProps {
   onClose: () => void;
   onSend: (text: string) => void;
 }
-
-export const ReviewsReplyModal: React.FC<ModalProps> = ({
+export const ReviewsReplyModal = ({
   reviewComment,
   onClose,
   onSend,
-}) => {
+}: ModalProps) => {
   const [text, setText] = useState("");
 
   const handleTextChange = (val: string) => {

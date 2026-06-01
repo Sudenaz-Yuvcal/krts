@@ -24,7 +24,7 @@ interface SalonEditProps {
   onCancel: () => void;
 }
 
-export const SalonEdit: React.FC<SalonEditProps> = ({
+export const SalonEdit = ({
   phone,
   setPhone,
   selectedCity,
@@ -42,7 +42,7 @@ export const SalonEdit: React.FC<SalonEditProps> = ({
   isSubmitted,
   onSave,
   onCancel,
-}) => {
+}: SalonEditProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filterInput = (value: string): string => {

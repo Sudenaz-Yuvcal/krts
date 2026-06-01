@@ -1,4 +1,3 @@
-import React from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { Star } from "lucide-react";
@@ -10,11 +9,11 @@ interface ListSectionProps {
   onDetailClick: (member: StaffMember) => void;
 }
 
-export const EmployeesList: React.FC<ListSectionProps> = ({
+export const EmployeesList = ({
   staffMembers,
   onAddClick,
   onDetailClick,
-}) => {
+}: ListSectionProps) => {
   return (
     <div className="space-y-10 animate-fadeIn">
       <div className="flex justify-between items-center">

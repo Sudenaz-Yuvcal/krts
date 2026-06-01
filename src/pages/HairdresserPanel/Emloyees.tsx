@@ -1,15 +1,14 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { EmployeesList } from "../../sections/emloyees/emloyees-list";
 import { EmployeesDetail } from "../../sections/emloyees/emloyees-detail";
 import { EmployeesAdd } from "../../sections/emloyees/emloyees-add";
 import type { StaffMember } from "../../types/emloyees";
 
-export const Staff: React.FC = () => {
+export const Staff = () => {
   const [viewMode, setViewMode] = useState<"list" | "detail" | "add">("list");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [showToast, setShowToast] = useState(false);
-
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([
     {
       id: 1,

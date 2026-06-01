@@ -10,10 +10,7 @@ interface AddSectionProps {
   onCancel: () => void;
 }
 
-export const EmployeesAdd: React.FC<AddSectionProps> = ({
-  onSave,
-  onCancel,
-}) => {
+export const EmployeesAdd = ({ onSave, onCancel }: AddSectionProps) => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",

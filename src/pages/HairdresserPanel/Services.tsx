@@ -1,65 +1,15 @@
 import React, { useState, useMemo, useRef } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import {
-  Plus,
-  Clock,
-  Trash2,
-  Search,
-  SlidersHorizontal,
-  X,
-  AlertCircle,
-  Edit3,
-  Power,
-  Upload,
-} from "lucide-react";
+import type { Service } from "../../types/services";
+import { INITIAL_SERVICES } from "../../constants/service";
+import { validateServiceForm } from "../../utils/validations";
+import { ServiceTable } from "../../sections/services/service-table";
+import { ServiceFormModal } from "../../sections/services/service-form-modal";
 
-interface Service {
-  id: string;
-  name: string;
-  price: number;
-  category: "Kadın" | "Erkek";
-  duration: number;
-  image_url: string;
-  is_active: boolean;
-}
+import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 
-const INITIAL_SERVICES: Service[] = [
-  {
-    id: "k-1",
-    name: "Detaylı Saç Kesimi, Yıkama & Stil Fönü",
-    price: 450,
-    category: "Kadın",
-    duration: 45,
-    image_url:
-      "https://images.unsplash.com/photo-1562322140-8baeececf3df?q=80&w=200",
-    is_active: true,
-  },
-  {
-    id: "k-2",
-    name: "Profesyonel Ombre / Balayaj Uygulaması",
-    price: 2200,
-    category: "Kadın",
-    duration: 180,
-    image_url:
-      "https://images.unsplash.com/photo-1605497746444-ac9da58d440f?q=80&w=200",
-    is_active: true,
-  },
-  {
-    id: "e-1",
-    name: "Modern Saç Kesimi, Yıkama & Şekillendirme",
-    price: 300,
-    category: "Erkek",
-    duration: 30,
-    image_url:
-      "https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=200",
-    is_active: true,
-  },
-];
-
-const DURATION_PILLS = [15, 30, 45, 60, 90, 120, 150, 180];
-
-export const Services: React.FC = () => {
+export const Services = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<"Kadın" | "Erkek">("Kadın");
   const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
@@ -67,6 +17,7 @@ export const Services: React.FC = () => {
   const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc">(
     "default",
   );
+
   const [showFilterMenu, setShowFilterMenu] = useState<boolean>(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
@@ -79,11 +30,7 @@ export const Services: React.FC = () => {
   const [imageFile, setImageFile] = useState<string>("");
   const [isActiveStatus, setIsActiveStatus] = useState<boolean>(true);
 
-  const [errors, setErrors] = useState<{
-    name?: string;
-    price?: string;
-    image?: string;
-  }>({});
+  const [errors, setErrors] = useState<any>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<string | null>(null);
 
@@ -97,14 +44,6 @@ export const Services: React.FC = () => {
     const hours = Math.floor(minutes / 60);
     const remMinutes = minutes % 60;
     return remMinutes > 0 ? `${hours} Sa ${remMinutes} Dk` : `${hours} Sa`;
-  };
-
-  const handleNameChange = (val: string, currentVal: string): string => {
-    const cleanVal = val.replace(/[0-9]/g, "");
-    if (cleanVal.includes("  ")) {
-      return currentVal;
-    }
-    return cleanVal;
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,24 +77,16 @@ export const Services: React.FC = () => {
 
   const handleCreateService = (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: { name?: string; price?: string; image?: string } = {};
-
-    if (!name.trim()) newErrors.name = "Hizmet adı alanı boş bırakılamaz.";
-    const priceNum = Number(price);
-    if (!price) newErrors.price = "Fiyat alanı boş bırakılamaz.";
-    if (isNaN(priceNum) || priceNum <= 0)
-      newErrors.price = "Geçerli bir fiyat giriniz.";
-    if (!imageFile) newErrors.image = "Görsel yüklemek zorunludur.";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const validationErrors = validateServiceForm({ name, price, imageFile });
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
     const newService: Service = {
       id: Math.random().toString(),
       name: name.trim(),
-      price: priceNum,
+      price: Number(price),
       category: activeTab,
       duration: duration,
       image_url: imageFile,
@@ -170,17 +101,10 @@ export const Services: React.FC = () => {
   const handleUpdateService = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingService) return;
-    const newErrors: { name?: string; price?: string; image?: string } = {};
 
-    if (!name.trim()) newErrors.name = "Hizmet adı alanı boş bırakılamaz.";
-    const priceNum = Number(price);
-    if (!price) newErrors.price = "Fiyat alanı boş bırakılamaz.";
-    if (isNaN(priceNum) || priceNum <= 0)
-      newErrors.price = "Geçerli bir fiyat giriniz.";
-    if (!imageFile) newErrors.image = "Görsel yüklemek zorunludur.";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    const validationErrors = validateServiceForm({ name, price, imageFile });
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
@@ -190,7 +114,7 @@ export const Services: React.FC = () => {
           ? {
               ...s,
               name: name.trim(),
-              price: priceNum,
+              price: Number(price),
               duration: duration,
               image_url: imageFile,
               is_active: isActiveStatus,
@@ -261,7 +185,7 @@ export const Services: React.FC = () => {
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-100/80 p-3 rounded-3x1 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-100/80 p-3 rounded-3xl shadow-xs">
         <div className="flex bg-slate-50 p-1 rounded-xl w-fit">
           <button
             onClick={() => {
@@ -342,298 +266,51 @@ export const Services: React.FC = () => {
       </div>
 
       <Card className="p-0 border border-slate-100/80 bg-white rounded-[28px] overflow-hidden shadow-xs">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 text-[11px] font-black uppercase tracking-wider bg-slate-50/70">
-                <th className="py-4 pl-8 w-24">Görsel</th>
-                <th className="py-4 px-4">Hizmet Spesifikasyon Adı</th>
-                <th className="py-4 px-4 w-40">İşlem Süresi</th>
-                <th className="py-4 px-4 w-36">Hizmet Bedeli</th>
-                <th className="py-4 px-4 w-36">Operasyon Statüsü</th>
-                <th className="py-4 pr-8 w-32 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filteredServices.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="py-16 text-center text-slate-400 font-bold text-xs"
-                  >
-                    Katalog kaydı bulunmamaktadır.
-                  </td>
-                </tr>
-              ) : (
-                filteredServices.map((service) => (
-                  <tr
-                    key={service.id}
-                    className={`group transition-all duration-200 ${!service.is_active ? "bg-slate-50/60 opacity-65" : "hover:bg-purple-50/10"}`}
-                  >
-                    <td className="py-4 pl-8">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border border-slate-100">
-                        <img
-                          src={service.image_url}
-                          alt={service.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800 tracking-tight">
-                          {service.name}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-                          {service.category} Bölümü
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                        <Clock className="w-3.5 h-3.5 text-slate-300" />
-                        <span>{formatDuration(service.duration)}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span className="text-sm font-black text-slate-800">
-                        ₺{service.price}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <span
-                        className={`text-[10px] font-black px-2.5 py-1 rounded-lg inline-flex items-center gap-1 ${service.is_active ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}
-                      >
-                        <div
-                          className={`w-1.5 h-1.5 rounded-full ${service.is_active ? "bg-emerald-500" : "bg-red-400"}`}
-                        />
-                        {service.is_active ? "Aktif" : "Hizmet Dışı"}
-                      </span>
-                    </td>
-                    <td className="py-4 pr-8 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button
-                          onClick={() => toggleStatusDirectly(service.id)}
-                          title={
-                            service.is_active ? "Hizmet Dışı Bırak" : "Aktif Et"
-                          }
-                          className={`p-2 rounded-lg transition-all cursor-pointer ${service.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50" : "text-emerald-600 bg-emerald-50/50 hover:bg-emerald-50"}`}
-                        >
-                          <Power className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(service)}
-                          className="p-2 text-slate-400 hover:text-brand-purple rounded-lg hover:bg-purple-50 transition-all cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setServiceToDelete(service.id)}
-                          className="p-2 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        {activeTab === "Kadın" ? (
+          <ServiceTable
+            services={filteredServices}
+            category="Kadın"
+            formatDuration={formatDuration}
+            toggleStatusDirectly={toggleStatusDirectly}
+            handleOpenEditModal={handleOpenEditModal}
+            setServiceToDelete={setServiceToDelete}
+          />
+        ) : (
+          <ServiceTable
+            services={filteredServices}
+            category="Erkek"
+            formatDuration={formatDuration}
+            toggleStatusDirectly={toggleStatusDirectly}
+            handleOpenEditModal={handleOpenEditModal}
+            setServiceToDelete={setServiceToDelete}
+          />
+        )}
       </Card>
 
-      {(isAddModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl border border-slate-100 shadow-2xl mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-50">
-              <div>
-                <h3 className="text-lg font-black text-slate-800">
-                  {isAddModalOpen
-                    ? `${activeTab} Kataloğuna Ekle`
-                    : "Hizmet Detaylarını Düzenle"}
-                </h3>
-                <p className="text-slate-400 text-[11px] font-medium mt-0.5">
-                  Rakamlar ve ardışık boşluklar güvenlik protokolünce
-                  engellenmiştir.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsAddModalOpen(false);
-                  setIsEditModalOpen(false);
-                  setErrors({});
-                }}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form
-              onSubmit={
-                isAddModalOpen ? handleCreateService : handleUpdateService
-              }
-              className="mt-5 space-y-4"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Hizmet Spesifikasyon Adı
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) =>
-                        setName(handleNameChange(e.target.value, name))
-                      }
-                      className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all ${errors.name ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                      placeholder="Örn: Katlı Saç Kesimi"
-                    />
-                    {errors.name && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.name}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Fiyatlandırma Bedeli (₺)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={price}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setPrice(val);
-                      }}
-                      className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${errors.price ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                      placeholder="Örn: 450"
-                    />
-                    {errors.price && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.price}
-                      </div>
-                    )}
-                  </div>
-
-                  {isEditModalOpen && (
-                    <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl">
-                      <div>
-                        <span className="text-xs font-bold text-slate-700 block">
-                          Katalog Satış Durumu
-                        </span>
-                        <span className="text-[10px] font-medium text-slate-400 block">
-                          Kapatılırsa randevu alınamaz.
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsActiveStatus(!isActiveStatus)}
-                        className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-hidden cursor-pointer ${isActiveStatus ? "bg-emerald-500 flex justify-end" : "bg-slate-300 flex justify-start"}`}
-                      >
-                        <div className="bg-white w-4.5 h-4.5 rounded-full shadow-xs" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      İşlem Süresi
-                    </label>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {DURATION_PILLS.map((mins) => (
-                        <button
-                          key={mins}
-                          type="button"
-                          onClick={() => setDuration(mins)}
-                          className={`py-2 text-[10px] font-bold rounded-lg border transition-all cursor-pointer text-center ${duration === mins ? "bg-brand-purple text-white border-brand-purple" : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100/70"}`}
-                        >
-                          {mins >= 60 ? `${mins / 60} Sa` : `${mins} Dk`}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Hizmet Görseli
-                    </label>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
-
-                    {imageFile ? (
-                      <div className="relative w-full h-22 rounded-xl overflow-hidden border border-slate-100 group">
-                        <img
-                          src={imageFile}
-                          alt="Önizleme"
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setImageFile("")}
-                          className="absolute top-1.5 right-1.5 p-1 bg-slate-900/70 text-white rounded-md backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`w-full h-22 border border-dashed rounded-xl flex flex-col items-center justify-center gap-1 bg-slate-50/50 hover:bg-slate-50 hover:border-purple-200 transition-all cursor-pointer ${errors.image ? "border-red-300" : "border-slate-200"}`}
-                      >
-                        <Upload className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-[11px] font-bold text-slate-600">
-                          Görsel Yükle
-                        </span>
-                        <span className="text-[9px] font-medium text-slate-400">
-                          PNG, JPG veya JPEG
-                        </span>
-                      </button>
-                    )}
-                    {errors.image && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.image}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3 border-t border-slate-50 pt-4 mt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddModalOpen(false);
-                    setIsEditModalOpen(false);
-                    setErrors({});
-                  }}
-                  className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold py-3 px-4 rounded-xl transition-all cursor-pointer"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-brand-purple hover:bg-purple-700 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-xs transition-all cursor-pointer"
-                >
-                  {isAddModalOpen ? "Kataloğa Kaydet" : "Değişiklikleri Kaydet"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ServiceFormModal
+        isOpen={isAddModalOpen || isEditModalOpen}
+        mode={isAddModalOpen ? "add" : "edit"}
+        onClose={() => {
+          setIsAddModalOpen(false);
+          setIsEditModalOpen(false);
+          setErrors({});
+        }}
+        onSubmit={isAddModalOpen ? handleCreateService : handleUpdateService}
+        activeTab={activeTab}
+        name={name}
+        setName={setName}
+        price={price}
+        setPrice={setPrice}
+        duration={duration}
+        setDuration={setDuration}
+        imageFile={imageFile}
+        setImageFile={setImageFile}
+        isActiveStatus={isActiveStatus}
+        setIsActiveStatus={setIsActiveStatus}
+        errors={errors}
+        fileInputRef={fileInputRef}
+        handleImageChange={handleImageChange}
+      />
 
       {serviceToDelete && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50">
