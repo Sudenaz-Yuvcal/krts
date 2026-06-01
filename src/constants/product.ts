@@ -1,0 +1,36 @@
+import type { Product } from "../types/products";
+export const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: "1",
+    name: "Keratin Özlü Saç Bakım Maskesi",
+    stock: 12,
+    purchasePrice: 100,
+    salePrice: 150,
+    image_url: "",
+    is_active: true,
+    totalIncome: 450,
+    date: "22 Mayıs 2026",
+  },
+  {
+    id: "2",
+    name: "Tuzsuz Profesyonel Şampuan 1L",
+    stock: 4,
+    purchasePrice: 80,
+    salePrice: 125,
+    image_url: "",
+    is_active: true,
+    totalIncome: 625,
+    date: "21 Mayıs 2026",
+  },
+  {
+    id: "3",
+    name: "Argan Yağlı Yoğun Parlatıcı Serum",
+    stock: 25,
+    purchasePrice: 150,
+    salePrice: 280,
+    image_url: "",
+    is_active: false,
+    totalIncome: 0,
+    date: "20 Mayıs 2026",
+  },
+];

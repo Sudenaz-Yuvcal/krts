@@ -35,3 +35,47 @@ export const validateSalonForm = (
 
   return newErrors;
 };
+
+
+
+export interface ServiceFormFields {
+  name: string;
+  price: string;
+  imageFile: string;
+}
+
+export interface ServiceFormErrors {
+  name?: string;
+  price?: string;
+  image?: string;
+}
+
+export const validateServiceForm = (fields: ServiceFormFields): ServiceFormErrors => {
+  const errors: ServiceFormErrors = {};
+
+  if (!fields.name.trim()) {
+    errors.name = "Hizmet adı alanı boş bırakılamaz.";
+  }
+
+  const priceNum = Number(fields.price);
+  if (!fields.price) {
+    errors.price = "Fiyat alanı boş bırakılamaz.";
+  } else if (isNaN(priceNum) || priceNum <= 0) {
+    errors.price = "Geçerli bir fiyat giriniz.";
+  }
+
+  if (!fields.imageFile) {
+    errors.image = "Görsel yüklemek zorunludur.";
+  }
+
+  return errors;
+};
+
+
+export const filterServiceNameInput = (value: string, currentVal: string): string => {
+  const cleanVal = value.replace(/[0-9]/g, "");
+  if (cleanVal.includes("  ")) {
+    return currentVal;
+  }
+  return cleanVal;
+};

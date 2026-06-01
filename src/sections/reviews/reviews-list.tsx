@@ -1,4 +1,3 @@
-import React from "react";
 import { Card } from "../../components/ui/Card";
 import {
   Star,
@@ -22,14 +21,12 @@ interface ListProps {
   reviews: Review[];
   onReplyClick: (id: string) => void;
 }
-
-export const ReviewsList: React.FC<ListProps> = ({ reviews, onReplyClick }) => {
+export const ReviewsList = ({ reviews, onReplyClick }: ListProps) => {
   const maskName = (fullName: string) => {
     const parts = fullName.trim().split(" ");
     if (parts.length < 2) return fullName;
     return `${parts.slice(0, -1).join(" ")} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("tr-TR", {
       year: "numeric",

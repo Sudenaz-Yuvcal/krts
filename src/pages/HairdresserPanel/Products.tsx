@@ -1,68 +1,13 @@
 import React, { useState, useMemo, useRef } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
-import {
-  Plus,
-  ShoppingBag,
-  Trash2,
-  Search,
-  SlidersHorizontal,
-  X,
-  AlertCircle,
-  Edit3,
-  Power,
-  Upload,
-} from "lucide-react";
+import type { Product } from "../../types/products";
+import { INITIAL_PRODUCTS } from "../../constants/product";
+import { Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ProductTable } from "../../sections/products/product-table";
+import { ProductFormModal } from "../../sections/products/product-form-modal";
 
-interface Product {
-  id: string;
-  name: string;
-  stock: number;
-  purchasePrice: number;
-  salePrice: number;
-  image_url: string;
-  is_active: boolean;
-  totalIncome: number;
-  date: string;
-}
-
-const INITIAL_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Keratin Özlü Saç Bakım Maskesi",
-    stock: 12,
-    purchasePrice: 100,
-    salePrice: 150,
-    image_url: "",
-    is_active: true,
-    totalIncome: 450,
-    date: "22 Mayıs 2026",
-  },
-  {
-    id: "2",
-    name: "Tuzsuz Profesyonel Şampuan 1L",
-    stock: 4,
-    purchasePrice: 80,
-    salePrice: 125,
-    image_url: "",
-    is_active: true,
-    totalIncome: 625,
-    date: "21 Mayıs 2026",
-  },
-  {
-    id: "3",
-    name: "Argan Yağlı Yoğun Parlatıcı Serum",
-    stock: 25,
-    purchasePrice: 150,
-    salePrice: 280,
-    image_url: "",
-    is_active: false,
-    totalIncome: 0,
-    date: "20 Mayıs 2026",
-  },
-];
-
-export const Products: React.FC = () => {
+export const Products = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -71,8 +16,8 @@ export const Products: React.FC = () => {
   >("default");
   const [showFilterMenu, setShowFilterMenu] = useState<boolean>(false);
 
-  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [modalMode, setModalMode] = useState<"add" | "edit">("add");
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [name, setName] = useState<string>("");
@@ -97,10 +42,10 @@ export const Products: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleNameChange = (val: string, currentVal: string): string => {
+  const handleNameChange = (val: string) => {
     const cleanVal = val.replace(/[0-9]/g, "");
-    if (cleanVal.includes("  ")) return currentVal;
-    return cleanVal;
+    if (cleanVal.includes("  ")) return;
+    setName(cleanVal);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,16 +58,18 @@ export const Products: React.FC = () => {
   };
 
   const handleOpenAddModal = () => {
+    setModalMode("add");
     setName("");
     setStock("");
     setPurchasePrice("");
     setSalePrice("");
     setImageFile("");
     setErrors({});
-    setIsAddModalOpen(true);
+    setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (product: Product) => {
+    setModalMode("edit");
     setEditingProduct(product);
     setName(product.name);
     setStock(product.stock.toString());
@@ -131,108 +78,77 @@ export const Products: React.FC = () => {
     setImageFile(product.image_url);
     setIsActiveStatus(product.is_active);
     setErrors({});
-    setIsEditModalOpen(true);
+    setIsModalOpen(true);
   };
 
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
+  const validateForm = (
+    stockNum: number,
+    pPriceNum: number,
+    sPriceNum: number,
+  ) => {
     const newErrors: typeof errors = {};
-
     if (!name.trim()) newErrors.name = "Ürün adı alanı boş bırakılamaz.";
-
-    const stockNum = Number(stock);
     if (!stock) newErrors.stock = "Stok miktarı boş bırakılamaz.";
     if (isNaN(stockNum) || stockNum < 0)
       newErrors.stock = "Geçerli bir stok giriniz.";
-
-    const pPriceNum = Number(purchasePrice);
     if (!purchasePrice)
       newErrors.purchasePrice = "Alış fiyatı boş bırakılamaz.";
     if (isNaN(pPriceNum) || pPriceNum <= 0)
       newErrors.purchasePrice = "Geçerli bir alış fiyatı giriniz.";
-
-    const sPriceNum = Number(salePrice);
     if (!salePrice) newErrors.salePrice = "Satış fiyatı boş bırakılamaz.";
     if (isNaN(sPriceNum) || sPriceNum <= 0)
       newErrors.salePrice = "Geçerli bir satış fiyatı giriniz.";
     if (sPriceNum <= pPriceNum)
       newErrors.salePrice = "Satış fiyatı alış fiyatından yüksek olmalıdır.";
-
     if (!imageFile) newErrors.image = "Ürün görseli yüklemek zorunludur.";
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    const newProduct: Product = {
-      id: Math.random().toString(),
-      name: name.trim(),
-      stock: stockNum,
-      purchasePrice: pPriceNum,
-      salePrice: sPriceNum,
-      image_url: imageFile,
-      is_active: true,
-      totalIncome: 0,
-      date: "22 Mayıs 2026",
-    };
-
-    setProducts([newProduct, ...products]);
-    setIsAddModalOpen(false);
-    showToast("Ürün envantere başarıyla eklendi.");
+    return newErrors;
   };
 
-  const handleUpdateProduct = (e: React.FormEvent) => {
+  const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProduct) return;
-    const newErrors: typeof errors = {};
-
-    if (!name.trim()) newErrors.name = "Ürün adı alanı boş bırakılamaz.";
-
     const stockNum = Number(stock);
-    if (!stock) newErrors.stock = "Stok miktarı boş bırakılamaz.";
-    if (isNaN(stockNum) || stockNum < 0)
-      newErrors.stock = "Geçerli bir stok giriniz.";
-
     const pPriceNum = Number(purchasePrice);
-    if (!purchasePrice)
-      newErrors.purchasePrice = "Alış fiyatı boş bırakılamaz.";
-    if (isNaN(pPriceNum) || pPriceNum <= 0)
-      newErrors.purchasePrice = "Geçerli bir alış fiyatı giriniz.";
-
     const sPriceNum = Number(salePrice);
-    if (!salePrice) newErrors.salePrice = "Satış fiyatı boş bırakılamaz.";
-    if (isNaN(sPriceNum) || sPriceNum <= 0)
-      newErrors.salePrice = "Geçerli bir satış fiyatı giriniz.";
-    if (sPriceNum <= pPriceNum)
-      newErrors.salePrice = "Satış fiyatı alış fiyatından yüksek olmalıdır.";
 
-    if (!imageFile) newErrors.image = "Ürün görseli yüklemek zorunludur.";
-
+    const newErrors = validateForm(stockNum, pPriceNum, sPriceNum);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    setProducts(
-      products.map((p) =>
-        p.id === editingProduct.id
-          ? {
-              ...p,
-              name: name.trim(),
-              stock: stockNum,
-              purchasePrice: pPriceNum,
-              salePrice: sPriceNum,
-              image_url: imageFile,
-              is_active: isActiveStatus,
-            }
-          : p,
-      ),
-    );
-
-    setIsEditModalOpen(false);
-    setEditingProduct(null);
-    showToast("Ürün envanteri başarıyla güncellendi.");
+    if (modalMode === "add") {
+      const newProduct: Product = {
+        id: Math.random().toString(),
+        name: name.trim(),
+        stock: stockNum,
+        purchasePrice: pPriceNum,
+        salePrice: sPriceNum,
+        image_url: imageFile,
+        is_active: true,
+        totalIncome: 0,
+        date: "22 Mayıs 2026",
+      };
+      setProducts([newProduct, ...products]);
+      showToast("Ürün envantere başarıyla eklendi.");
+    } else if (modalMode === "edit" && editingProduct) {
+      setProducts(
+        products.map((p) =>
+          p.id === editingProduct.id
+            ? {
+                ...p,
+                name: name.trim(),
+                stock: stockNum,
+                purchasePrice: pPriceNum,
+                salePrice: sPriceNum,
+                image_url: imageFile,
+                is_active: isActiveStatus,
+              }
+            : p,
+        ),
+      );
+      showToast("Ürün envanteri başarıyla güncellendi.");
+    }
+    setIsModalOpen(false);
   };
 
   const confirmDeleteProduct = () => {
@@ -359,323 +275,36 @@ export const Products: React.FC = () => {
       </div>
 
       <Card className="p-0 border border-slate-100/80 bg-white rounded-[28px] overflow-hidden shadow-xs">
-        <div className="overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 text-[11px] font-black uppercase tracking-wider bg-slate-50/70">
-                <th className="py-4 pl-8 w-24">Görsel</th>
-                <th className="py-4 px-4">Ürün Adı</th>
-                <th className="py-4 px-4 w-36">Toplam Gelir</th>
-                <th className="py-4 px-4 w-32">Kalan Stok</th>
-                <th className="py-4 px-4 w-32">Tarih</th>
-                <th className="py-4 px-4 w-32">Stok Durumu</th>
-                <th className="py-4 pr-8 w-28 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filteredProducts.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="py-16 text-center text-slate-400 font-bold text-xs"
-                  >
-                    Envanter kaydı bulunmamaktadır.
-                  </td>
-                </tr>
-              ) : (
-                filteredProducts.map((product) => (
-                  <tr
-                    key={product.id}
-                    className={`group transition-all duration-200 ${!product.is_active ? "bg-slate-50/60 opacity-65" : "hover:bg-purple-50/10"}`}
-                  >
-                    <td className="py-4 pl-8">
-                      <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center text-brand-purple overflow-hidden border border-slate-100">
-                        {product.image_url ? (
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <ShoppingBag className="w-4 h-4" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 font-bold text-slate-800 text-xs">
-                      {product.name}
-                    </td>
-                    <td className="py-4 px-4 text-xs font-black text-brand-purple">
-                      ₺{product.totalIncome}
-                    </td>
-                    <td className="py-4 px-4 text-xs font-bold text-slate-500">
-                      {product.stock} adet
-                    </td>
-                    <td className="py-4 px-4 text-xs font-medium text-slate-400">
-                      {product.date}
-                    </td>
-                    <td className="py-4 px-4">
-                      {product.stock <= 5 && product.is_active ? (
-                        <span className="text-[10px] font-black bg-red-50 text-red-500 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                          Kritik Stok
-                        </span>
-                      ) : product.is_active ? (
-                        <span className="text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                          Satışta
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-black bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                          Satışta Değil
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 pr-8 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <button
-                          onClick={() => toggleStatusDirectly(product.id)}
-                          title={
-                            product.is_active ? "Satıştan Kaldır" : "Satışa Aç"
-                          }
-                          className={`p-1.5 rounded-lg transition-all cursor-pointer ${product.is_active ? "text-slate-400 hover:text-red-500 hover:bg-red-50" : "text-emerald-600 bg-emerald-50/50 hover:bg-emerald-50"}`}
-                        >
-                          <Power className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(product)}
-                          className="p-1.5 text-slate-400 hover:text-brand-purple rounded-lg hover:bg-purple-50 transition-all cursor-pointer"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setProductToDelete(product.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <ProductTable
+          products={filteredProducts}
+          onToggleStatus={toggleStatusDirectly}
+          onEdit={handleOpenEditModal}
+          onDelete={setProductToDelete}
+        />
       </Card>
 
-      {(isAddModalOpen || isEditModalOpen) && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-2xl border border-slate-100 shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-50 shrink-0">
-              <div>
-                <h3 className="text-lg font-black text-slate-800">
-                  {isAddModalOpen
-                    ? "Envantere Yeni Ürün Ekle"
-                    : "Ürün Detaylarını Düzenle"}
-                </h3>
-                <p className="text-slate-400 text-[11px] font-medium mt-0.5">
-                  Rakamlar ve ardışık boşluklar güvenlik protokolünce
-                  engellenmiştir.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsAddModalOpen(false);
-                  setIsEditModalOpen(false);
-                  setErrors({});
-                }}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form
-              onSubmit={
-                isAddModalOpen ? handleCreateProduct : handleUpdateProduct
-              }
-              className="flex-1 overflow-y-auto py-4 space-y-3 pr-1"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Ürün Spesifikasyon Adı
-                    </label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) =>
-                        setName(handleNameChange(e.target.value, name))
-                      }
-                      className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all ${errors.name ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                      placeholder="Örn: Profesyonel Şampuan"
-                    />
-                    {errors.name && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.name}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Alış Fiyatı (₺)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={purchasePrice}
-                        onChange={(e) =>
-                          setPurchasePrice(e.target.value.replace(/\D/g, ""))
-                        }
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all ${errors.purchasePrice ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                        placeholder="Örn: 80"
-                      />
-                      {errors.purchasePrice && (
-                        <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                          <AlertCircle className="w-3 h-3" />{" "}
-                          {errors.purchasePrice}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Satış Fiyatı (₺)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={salePrice}
-                        onChange={(e) =>
-                          setSalePrice(e.target.value.replace(/\D/g, ""))
-                        }
-                        className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all ${errors.salePrice ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                        placeholder="Örn: 125"
-                      />
-                      {errors.salePrice && (
-                        <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                          <AlertCircle className="w-3 h-3" /> {errors.salePrice}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                      Mevcut Stok Adedi
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={stock}
-                      onChange={(e) =>
-                        setStock(e.target.value.replace(/\D/g, ""))
-                      }
-                      className={`w-full bg-slate-50 border rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:outline-hidden focus:bg-white transition-all ${errors.stock ? "border-red-300 focus:border-red-400 bg-red-50/10" : "border-slate-100 focus:border-purple-200"}`}
-                      placeholder="Örn: 20"
-                    />
-                    {errors.stock && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.stock}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Ürün Görseli <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    {imageFile ? (
-                      <div className="relative w-full h-9.5 rounded-xl overflow-hidden border border-slate-100 group">
-                        <img
-                          src={imageFile}
-                          alt="Önizleme"
-                          className="w-full h-full object-cover"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setImageFile("")}
-                          className="absolute top-1 right-1 p-1 bg-slate-900/70 text-white rounded-md backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`w-full h-9.5 border border-dashed rounded-xl flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-slate-50 transition-all cursor-pointer ${errors.image ? "border-red-300 bg-red-50/10" : "border-slate-200 hover:border-purple-200"}`}
-                      >
-                        <Upload className="w-3 h-3 text-slate-400" />
-                        <span className="text-[10px] font-bold text-slate-600">
-                          Görsel Yüklemek Zorunludur
-                        </span>
-                      </button>
-                    )}
-                    {errors.image && (
-                      <div className="text-red-500 text-[10px] font-bold flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3" /> {errors.image}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {isEditModalOpen && (
-                <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl mt-4! shrink-0">
-                  <div>
-                    <span className="text-xs font-bold text-slate-700 block">
-                      Katalog Satış Durumu
-                    </span>
-                    <span className="text-[10px] font-medium text-slate-400 block">
-                      Kapatılırsa kasada satışı gerçekleştirilemez.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsActiveStatus(!isActiveStatus)}
-                    className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 focus:outline-hidden cursor-pointer ${isActiveStatus ? "bg-emerald-500 flex justify-end" : "bg-slate-300 flex justify-start"}`}
-                  >
-                    <div className="bg-white w-4.5 h-4.5 rounded-full shadow-xs" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex gap-3 border-t border-slate-50 pt-4 mt-4! shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddModalOpen(false);
-                    setIsEditModalOpen(false);
-                    setErrors({});
-                  }}
-                  className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold py-2.5 px-4 rounded-xl transition-all cursor-pointer"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-brand-purple hover:bg-purple-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer"
-                >
-                  {isAddModalOpen
-                    ? "Envantere Kaydet"
-                    : "Değişiklikleri Kaydet"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <ProductFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleFormSubmit}
+        mode={modalMode}
+        name={name}
+        setName={setName}
+        stock={stock}
+        setStock={setStock}
+        purchasePrice={purchasePrice}
+        setPurchasePrice={setPurchasePrice}
+        salePrice={salePrice}
+        setSalePrice={setSalePrice}
+        imageFile={imageFile}
+        setImageFile={setImageFile}
+        isActiveStatus={isActiveStatus}
+        setIsActiveStatus={setIsActiveStatus}
+        errors={errors}
+        fileInputRef={fileInputRef}
+        handleNameChange={handleNameChange}
+        handleImageChange={handleImageChange}
+      />
 
       {productToDelete && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50">
@@ -686,7 +315,7 @@ export const Products: React.FC = () => {
             <h3 className="text-lg font-black text-slate-800">
               Ürün Silinsin mi?
             </h3>
-            <p className="text-slate-400 text-xs font-semibold mt-1 px-2 '">
+            <p className="text-slate-400 text-xs font-semibold mt-1 px-2">
               Bu işlemi gerçekleştirmek istediğinize emin misiniz? Ürün envanter
               kaydı tamamen silinecektir.
             </p>

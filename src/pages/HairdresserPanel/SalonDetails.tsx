@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { SalonPreview } from "../../sections/salon/salon-preview";
 import { SalonEdit } from "../../sections/salon/salon-edit";
 import { validateSalonForm } from "../../utils/validations";
 
-export const SalonDetails: React.FC = () => {
+export const SalonDetails = () => {
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
 
   const [phone, setPhone] = useState("0532 123 45 67");

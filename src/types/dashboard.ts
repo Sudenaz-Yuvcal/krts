@@ -11,15 +11,18 @@ export interface HairdresserProfile {
 export interface Appointment {
   id: string;
   customerName: string;
+  customerPhone: string;
   serviceName: string;
-  category: 'Kadın' | 'Erkek';
+  category: "Kadın" | "Erkek";
   date: string;
   time: string;
+  duration: string;
+  staffName: string;
   price: number;
-  status: 'Yaklaşan' | 'Tamamlandı' | 'İptal';
-  paymentStatus: 'Blocked' | 'Released' | 'Refunded'; 
+  status: "Bekliyor" | "Tamamlandı" | "İptal";
+  paymentStatus: "Ödeme Alındı" | "İptal Edildi" | "Hesaba Aktarıldı";
+  cancelReason?: string;
 }
-
 export interface ServiceItem {
   id: string;
   name: string;

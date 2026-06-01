@@ -1,4 +1,3 @@
-import React from "react";
 import { Card } from "../../components/ui/Card";
 import { Edit3, Globe, Phone, MapPin, FileText, Info } from "lucide-react";
 
@@ -12,7 +11,7 @@ interface SalonPreviewProps {
   onEditClick: () => void;
 }
 
-export const SalonPreview: React.FC<SalonPreviewProps> = ({
+export const SalonPreview = ({
   phone,
   city,
   district,
@@ -20,7 +19,7 @@ export const SalonPreview: React.FC<SalonPreviewProps> = ({
   about,
   images,
   onEditClick,
-}) => {
+}: SalonPreviewProps) => {
   return (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex justify-between items-center">

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Card } from "../../components/ui/Card";
 import type { StaffMember } from "../../types/emloyees";
 import {
@@ -18,11 +18,10 @@ interface DetailSectionProps {
   selectedStaff: StaffMember;
   onBackClick: () => void;
 }
-
-export const EmployeesDetail: React.FC<DetailSectionProps> = ({
+export const EmployeesDetail = ({
   selectedStaff,
   onBackClick,
-}) => {
+}: DetailSectionProps) => {
   const [activeSubTab, setActiveSubTab] = useState<
     "rating" | "revenue" | "appointments"
   >("rating");

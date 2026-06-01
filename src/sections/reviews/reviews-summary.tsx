@@ -1,4 +1,3 @@
-import React from "react";
 import { Card } from "../../components/ui/Card";
 import {
   Award,
@@ -21,7 +20,7 @@ interface SummaryProps {
   setSortOrder: (val: any) => void;
 }
 
-export const ReviewsSummary: React.FC<SummaryProps> = ({
+export const ReviewsSummary = ({
   averageRating,
   totalReviews,
   statusFilter,
@@ -30,7 +29,7 @@ export const ReviewsSummary: React.FC<SummaryProps> = ({
   setRatingFilter,
   sortOrder,
   setSortOrder,
-}) => {
+}: SummaryProps) => {
   return (
     <div className="space-y-4 animate-fadeIn">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
