@@ -13,7 +13,6 @@ export interface Appointment {
   customerName: string;
   customerPhone: string;
   serviceName: string;
-  category: "Kadın" | "Erkek";
   date: string;
   time: string;
   duration: string;
@@ -27,7 +26,6 @@ export interface ServiceItem {
   id: string;
   name: string;
   price: number;
-  category: 'Kadın' | 'Erkek';
   duration: number; 
 }
 

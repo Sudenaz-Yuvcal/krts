@@ -1,32 +1,104 @@
-import { useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { SalonPreview } from "../../sections/salon/salon-preview";
 import { SalonEdit } from "../../sections/salon/salon-edit";
 import { validateSalonForm } from "../../utils/validations";
+import { supabase } from "../../lib/supabaseClient";
 
 export const SalonDetails = () => {
   const [viewMode, setViewMode] = useState<"preview" | "edit">("preview");
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const [phone, setPhone] = useState("0532 123 45 67");
-  const [selectedCity, setSelectedCity] = useState("İstanbul");
-  const [selectedDistrict, setSelectedDistrict] = useState("Beşiktaş");
-  const [address, setAddress] = useState(
-    "Nispetiye Mahallesi, Aytar Caddesi No:12 Kat:2",
-  );
-  const [about, setAbout] = useState(
-    "Salonumuz, saç renklendirme, mikro kaynak ve kreatif kesim alanlarında uzman kadrosuyla modern, yenilikçi ve konforlu bir hizmet sunmaktadır.",
-  );
-  const [images, setImages] = useState<string[]>([
-    "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=400",
-    "https://images.unsplash.com/photo-1521590832167-7bcbfea5733d?q=80&w=400",
-    "https://images.unsplash.com/photo-1633681926035-ec1ac984418a?q=80&w=400",
-  ]);
+  const [salonName, setSalonName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [mail, setMail] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [address, setAddress] = useState("");
+  const [about, setAbout] = useState("");
+  
+  const [openingTime, setOpeningTime] = useState("");
+  const [closingTime, setClosingTime] = useState("");
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showToast, setShowToast] = useState(false);
 
-  const handleSave = () => {
+  useEffect(() => {
+    const initializeSalon = async () => {
+      try {
+        setLoading(true);
+
+        const testUserId = "c719841b-0da9-4545-b510-c1d8f97a4890";
+        setUserId(testUserId);
+
+        const { data, error: fetchError } = await supabase
+          .from("salons")
+          .select("*")
+          .eq("salon_id", testUserId);
+
+        if (fetchError) throw fetchError;
+
+        if (data && data.length > 0) {
+          const salon = data[0];
+          
+          setSalonName(salon.salon_name || "");
+          setPhone(salon.phone || "");
+          setMail(salon.mail || ""); 
+          setSelectedCity(salon.city || "");
+          setSelectedDistrict(salon.district || "");
+          setAddress(salon.address || "");
+          setAbout(salon.about || "");
+          
+          setOpeningTime(salon.opening_time || "");
+          setClosingTime(salon.closing_time || "");
+
+          let rawImages = salon.cover_images;
+          let parsedImages: string[] = [];
+
+          if (Array.isArray(rawImages)) {
+            parsedImages = rawImages;
+          } else if (typeof rawImages === "string" && rawImages.trim() !== "") {
+            const cleanStr = rawImages.trim();
+            if (cleanStr.startsWith("[") && cleanStr.endsWith("]")) {
+              try {
+                parsedImages = JSON.parse(cleanStr);
+              } catch {
+                parsedImages = [cleanStr];
+              }
+            } else {
+              parsedImages = cleanStr.includes(",") ? cleanStr.split(",") : [cleanStr];
+            }
+          }
+
+          const cleanImages = parsedImages
+            .map((img) => {
+              if (typeof img !== "string") return "";
+              const trimmed = img.trim();
+              if (trimmed.startsWith("http")) {
+                return encodeURI(trimmed);
+              }
+              return trimmed;
+            })
+            .filter(Boolean);
+
+          setImages(cleanImages);
+        }
+      } catch (err) {
+        console.error("Salon senkronizasyon hatası:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeSalon();
+  }, []);
+
+  const handleSave = async () => {
+    if (!userId) return;
     setIsSubmitted(true);
 
     const validationErrors = validateSalonForm({
@@ -38,28 +110,72 @@ export const SalonDetails = () => {
       imagesCount: images.length,
     });
 
+    if (!openingTime) {
+      validationErrors.openingTime = "Lütfen salonun açılış saatini seçiniz.";
+    }
+    if (!closingTime) {
+      validationErrors.closingTime = "Lütfen salonun kapanış saatini seçiniz.";
+    }
+
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length === 0) {
-      setShowToast(true);
-      setViewMode("preview");
-      setTimeout(() => setShowToast(false), 4000);
+      if (isSaving) return;
+      setIsSaving(true);
+
+      try {
+        const cleanImages = Array.isArray(images)
+          ? images.filter((img) => typeof img === "string" && img.startsWith("http"))
+          : [];
+
+        const { error } = await supabase
+          .from("salons")
+          .update({
+            salon_name: salonName,
+            phone: phone,
+            mail: mail,
+            city: selectedCity,
+            district: selectedDistrict,
+            address: address.trim(),
+            about: about.trim(),
+            cover_images: cleanImages,
+            opening_time: openingTime, 
+            closing_time: closingTime  
+          })
+          .eq("salon_id", userId);
+
+        if (error) throw error;
+
+        setShowToast(true);
+        setViewMode("preview");
+        setTimeout(() => setShowToast(false), 4000);
+      } catch (err) {
+        console.error("Veritabanı kayıt hatası:", err);
+        alert("Profil güncellenirken veritabanı hatası oluştu.");
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2 text-sm font-bold text-slate-500">
+        <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+        Salon verileri veritabanından güvenli şekilde çekiliyor...
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
       {showToast && (
-        <div
-          className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl shadow-xl"
-          style={{ animation: "slideIn 0.4s ease-out forwards" }}
-        >
-          <style>{`@keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-4 rounded-2xl shadow-xl">
           <CheckCircle2 className="w-6 h-6 text-emerald-500 shrink-0" />
           <div>
             <h4 className="text-sm font-bold">Değişiklikler Kaydedildi</h4>
             <p className="text-xs text-emerald-600/90 mt-0.5">
-              Salon profiliniz başarıyla güncellendi.
+              Salon profiliniz başarıyla veritabanına işlendi.
             </p>
           </div>
         </div>
@@ -67,12 +183,16 @@ export const SalonDetails = () => {
 
       {viewMode === "preview" ? (
         <SalonPreview
+          salonName={salonName}
+          mail={mail}
           phone={phone}
           city={selectedCity}
           district={selectedDistrict}
           address={address}
           about={about}
           images={images}
+          openingTime={openingTime} 
+          closingTime={closingTime} 
           onEditClick={() => {
             setViewMode("edit");
             setIsSubmitted(false);
@@ -80,6 +200,10 @@ export const SalonDetails = () => {
         />
       ) : (
         <SalonEdit
+          salonName={salonName}         
+          setSalonName={setSalonName}   
+          mail={mail}                   
+          setMail={setMail}             
           phone={phone}
           setPhone={setPhone}
           selectedCity={selectedCity}
@@ -92,13 +216,20 @@ export const SalonDetails = () => {
           setAbout={setAbout}
           images={images}
           setImages={setImages}
+          openingTime={openingTime}       
+          setOpeningTime={setOpeningTime} 
+          closingTime={closingTime}       
+          setClosingTime={setClosingTime} 
           errors={errors}
           setErrors={setErrors}
           isSubmitted={isSubmitted}
-          onSave={handleSave}
+          onSave={handleSave} 
           onCancel={() => setViewMode("preview")}
+          isSavingExternal={isSaving}
         />
       )}
     </div>
   );
 };
+
+export default SalonDetails;

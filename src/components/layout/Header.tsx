@@ -18,6 +18,7 @@ import {
   User,
   ShieldCheck,
   ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 
 interface NotificationItem {
@@ -45,7 +46,15 @@ interface Message {
   time: string;
 }
 
-export function Header() {
+interface HeaderProps {
+  userRole: "hairdresser" | "admin";
+  setUserRole: React.Dispatch<React.SetStateAction<"hairdresser" | "admin">>;
+}
+
+export function Header({ userRole, setUserRole }: HeaderProps) {
+  const isAdminPanel = userRole === "admin";
+  const [period, setPeriod] = useState<"haftalik" | "aylik">("haftalik");
+
   const [notifications, setNotifications] = useState<NotificationItem[]>([
     {
       id: "n-1",
@@ -103,7 +112,6 @@ export function Header() {
     "all" | "unread" | "read"
   >("all");
 
-  // --- CANLI DESTEK & KRTS ASİSTAN STATE YAPISI ---
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [otherClickCount, setOtherClickCount] = useState(0);
   const [chatStep, setChatStep] = useState<
@@ -292,46 +300,112 @@ export function Header() {
   };
 
   return (
-    <header className="h-24 bg-linear-to-b from-slate-50 to-slate-50/30 border-b border-slate-100/80 backdrop-blur-xs flex items-center justify-between px-12 z-20 relative">
+    <header className="h-24 bg-slate-50 border-b border-slate-200 backdrop-blur-md flex items-center justify-between px-12 z-20 relative">
+      
       <div>
-        <h1 className="text-xl font-black text-slate-800 tracking-tight uppercase leading-none">
-          Fiem Kuaför & Güzellik Salonu
-        </h1>
-        <p className="text-xs text-slate-400 font-bold tracking-widest mt-1 uppercase">
-          Sistem Yönetim & Envanter Paneli
-        </p>
+        {isAdminPanel ? (
+          <>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight uppercase leading-none">
+              Süper Admin Konsolu
+            </h1>
+            <p className="text-xs text-slate-400 font-bold tracking-widest mt-1 uppercase">
+              Yüksek Segment Ekosistem Cirosu ve Pazar Yeri Takibi
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-xl font-black text-slate-800 tracking-tight uppercase leading-none">
+              Fiem Kuaför & Güzellik Salonu
+            </h1>
+            <p className="text-xs text-slate-400 font-bold tracking-widest mt-1 uppercase">
+              Sistem Yönetim & Envanter Paneli
+            </p>
+          </>
+        )}
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => {
-            setIsAssistantOpen(true);
-            setIsOpen(false);
-          }}
-          className="flex items-center gap-2 bg-white border border-slate-100 px-4 py-2 rounded-xl shadow-2xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11"
-        >
-          <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
-            <HeadphonesIcon className="w-4 h-4" />
-          </div>
-          <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
-            Canlı Destek & Asistan
-          </span>
-        </button>
+      <div className="flex items-center gap-4">
+        
+        {isAdminPanel && (
+          <>
+            <button
+              onClick={() => setUserRole("hairdresser")}
+              className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
+            >
+              <RefreshCw className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+              <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
+                Kuaför Paneline Geç
+              </span>
+            </button>
 
-        <div className="relative">
+            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-xs h-11 items-center shrink-0">
+              <button
+                onClick={() => setPeriod("haftalik")}
+                className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  period === "haftalik"
+                    ? "bg-purple-50 text-purple-600 shadow-xs"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                Haftalık
+              </button>
+              <button
+                onClick={() => setPeriod("aylik")}
+                className={`px-4 py-1.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
+                  period === "aylik"
+                    ? "bg-purple-50 text-purple-600 shadow-xs"
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                Aylık
+              </button>
+            </div>
+          </>
+        )}
+
+        {!isAdminPanel && (
+          <>
+            <button
+              onClick={() => setUserRole("admin")}
+              className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
+            >
+              <RefreshCw className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
+              <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
+                Yönetici Paneline Geç
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setIsAssistantOpen(true);
+                setIsOpen(false);
+              }}
+              className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
+            >
+              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <HeadphonesIcon className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
+                Canlı Destek & Asistan
+              </span>
+            </button>
+          </>
+        )}
+
+        <div className="relative z-50">
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2.5 bg-white rounded-xl border border-slate-100 shadow-2xs text-slate-400 hover:text-slate-700 transition-all relative cursor-pointer h-11 w-11 flex items-center justify-center"
+            className="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs text-slate-400 hover:text-slate-700 transition-all relative cursor-pointer h-11 w-11 flex items-center justify-center shrink-0"
           >
-            <Bell className="w-4.5 h-4.5" />
+            <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
               <span className="w-2 h-2 bg-rose-500 rounded-full absolute top-3 right-3 ring-2 ring-white animate-pulse"></span>
             )}
           </button>
 
           {isOpen && (
-            <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 overflow-hidden animate-fadeIn">
-              <div className="p-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+            <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <span className="text-xs font-black text-slate-800">
                   Bildirimler ({unreadCount})
                 </span>
@@ -344,7 +418,7 @@ export function Header() {
                   </button>
                 )}
               </div>
-              <div className="p-2 border-b border-slate-50 flex gap-1 bg-white">
+              <div className="p-2 border-b border-slate-100 flex gap-1 bg-white">
                 {["all", "today", "yesterday"].map((filter) => (
                   <button
                     key={filter}
@@ -359,12 +433,12 @@ export function Header() {
                   </button>
                 ))}
               </div>
-              <div className="max-h-64 overflow-y-auto divide-y divide-slate-50/60">
+              <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                 {filteredNotifications.slice(0, 4).map((notif) => (
                   <div
                     key={notif.id}
                     onClick={() => handleNotificationClick(notif.id)}
-                    className={`p-3.5 flex items-start gap-3 transition-all cursor-pointer hover:bg-slate-50/60 ${notif.isRead ? "opacity-45 bg-white" : "bg-purple-50/10"}`}
+                    className={`p-3.5 flex items-start gap-3 transition-all cursor-pointer hover:bg-slate-50 ${notif.isRead ? "opacity-45 bg-white" : "bg-purple-50/10"}`}
                   >
                     {getIcon(notif.type)}
                     <div className="flex-1 space-y-0.5">
@@ -378,13 +452,13 @@ export function Header() {
                   </div>
                 ))}
               </div>
-              <div className="p-2.5 border-t border-slate-50 text-center bg-slate-50/30">
+              <div className="p-2.5 border-t border-slate-100 text-center bg-slate-50/30">
                 <button
                   onClick={() => {
                     setIsFullPageOpen(true);
                     setIsOpen(false);
                   }}
-                  className="w-full text-[11px] font-black text-slate-500 hover:text-purple-600 transition-all py-1.5 rounded-lg hover:bg-slate-100/60 cursor-pointer"
+                  className="w-full text-[11px] font-black text-slate-500 hover:text-purple-600 transition-all py-1.5 rounded-lg hover:bg-slate-100 cursor-pointer"
                 >
                   Tümünü Gör
                 </button>
@@ -392,11 +466,12 @@ export function Header() {
             </div>
           )}
         </div>
+
       </div>
 
       {isAssistantOpen &&
         createPortal(
-          <div className="fixed inset-0 w-screen h-screen bg-slate-100 z-999999 flex flex-col md:flex-row overflow-hidden animate-fadeIn select-none left-0 top-0 right-0 bottom-0 m-0 p-0">
+          <div className="fixed inset-0 w-screen h-screen bg-slate-100 z-999999 flex flex-col md:flex-row overflow-hidden left-0 top-0 right-0 bottom-0 m-0 p-0">
             <div className="w-full md:w-80 bg-purple-900 text-white p-6 flex flex-col justify-between shrink-0 border-r border-black/10">
               <div className="space-y-6">
                 <button
@@ -464,7 +539,7 @@ export function Header() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-[radial-gradient(#e1dbec_1px,transparent_1px)] background-size:[16px_16px]">
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-[radial-gradient(#e1dbec_1px,transparent_1px)] bg-size-[16px_16px]">
                 <div className="max-w-3xl mx-auto space-y-6">
                   {chatMessages.map((msg, idx) => (
                     <div
@@ -472,11 +547,11 @@ export function Header() {
                       className={`flex items-end gap-3 max-w-xl ${msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto flex-row"}`}
                     >
                       {msg.sender === "bot" ? (
-                        <div className="w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
+                        <div className="w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center text-[10px] font-black shrink-0 shadow-xs">
                           AI
                         </div>
                       ) : (
-                        <div className="w-8 h-8 bg-slate-700 text-white rounded-full flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="w-8 h-8 bg-slate-700 text-white rounded-full flex items-center justify-center shrink-0 shadow-xs">
                           <User className="w-4 h-4" />
                         </div>
                       )}
@@ -504,7 +579,7 @@ export function Header() {
                             </div>
                             <a
                               href="tel:08503054545"
-                              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors text-center shadow-2xs"
+                              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-black px-4 py-2 rounded-xl transition-colors text-center shadow-xs"
                             >
                               Hemen Ara
                             </a>
@@ -607,7 +682,7 @@ export function Header() {
                             },
                           ]);
                         }}
-                        className="bg-purple-900 hover:bg-purple-800 text-white text-xs font-black py-3 px-8 rounded-xl transition-all cursor-pointer inline-block shadow-2xs"
+                        className="bg-purple-900 hover:bg-purple-800 text-white text-xs font-black py-3 px-8 rounded-xl transition-all cursor-pointer inline-block shadow-xs"
                       >
                         KRTS Görüşmesini Kapat ve Panele Dön
                       </button>
@@ -621,8 +696,8 @@ export function Header() {
         )}
 
       {isFullPageOpen && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-md flex justify-end z-99999 p-6 animate-fadeIn">
-          <div className="w-full max-w-4xl bg-white h-full rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100 animate-slideLeft">
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-md flex justify-end z-99999 p-6">
+          <div className="w-full max-w-4xl bg-white h-full rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-100">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
@@ -639,7 +714,7 @@ export function Header() {
               </div>
               <button
                 onClick={() => setIsFullPageOpen(false)}
-                className="p-2 hover:bg-slate-200/60 rounded-xl text-slate-400 hover:text-slate-700 transition-all cursor-pointer border border-slate-200/40 bg-white shadow-2xs"
+                className="p-2 hover:bg-slate-200/60 rounded-xl text-slate-400 hover:text-slate-700 transition-all cursor-pointer border border-slate-200/40 bg-white shadow-xs"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -669,7 +744,7 @@ export function Header() {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="text-xs bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-600 px-4 py-2 rounded-xl transition-all border border-purple-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  className="text-xs bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-600 px-4 py-2 rounded-xl transition-all border border-purple-100 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                 >
                   <Check className="w-4 h-4" /> Tümünü Okundu İşaretle
                 </button>
@@ -687,7 +762,7 @@ export function Header() {
                   <div
                     key={notif.id}
                     onClick={() => handleNotificationClick(notif.id)}
-                    className={`p-4 rounded-2xl border border-slate-100/70 shadow-2xs flex items-center justify-between gap-4 transition-all cursor-pointer bg-white hover:border-purple-200 ${notif.isRead ? "opacity-50" : "border-l-2 border-l-purple-600"}`}
+                    className={`p-4 rounded-2xl border border-slate-100/70 shadow-xs flex items-center justify-between gap-4 transition-all cursor-pointer bg-white hover:border-purple-200 ${notif.isRead ? "opacity-50" : "border-l-2 border-l-purple-600"}`}
                   >
                     <div className="flex items-center gap-4 flex-1">
                       {getIcon(notif.type)}

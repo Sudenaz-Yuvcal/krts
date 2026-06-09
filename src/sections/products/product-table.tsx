@@ -16,11 +16,13 @@ export const ProductTable = ({
 }: ProductTableProps) => {
   return (
     <div className="overflow-x-auto w-full">
-      <table className="w-full text-left border-collapse">
+      <table className="w-full text-left border-collapse min-w-212.5">
         <thead>
           <tr className="border-b border-slate-100 text-slate-400 text-[11px] font-black uppercase tracking-wider bg-slate-50/70">
             <th className="py-4 pl-8 w-24">Görsel</th>
             <th className="py-4 px-4">Ürün Adı</th>
+            <th className="py-4 px-4 w-28">Alış Fiyatı</th>
+            <th className="py-4 px-4 w-28">Satış Fiyatı</th>
             <th className="py-4 px-4 w-36">Toplam Gelir</th>
             <th className="py-4 px-4 w-32">Kalan Stok</th>
             <th className="py-4 px-4 w-32">Tarih</th>
@@ -32,7 +34,7 @@ export const ProductTable = ({
           {products.length === 0 ? (
             <tr>
               <td
-                colSpan={7}
+                colSpan={9}
                 className="py-16 text-center text-slate-400 font-bold text-xs"
               >
                 Envanter kaydı bulunmamaktadır.
@@ -57,18 +59,31 @@ export const ProductTable = ({
                     )}
                   </div>
                 </td>
+
                 <td className="py-4 px-4 font-bold text-slate-800 text-xs">
                   {product.name}
                 </td>
+
+                <td className="py-4 px-4 text-xs font-semibold text-slate-600">
+                  ₺{product.purchasePrice}
+                </td>
+
+                <td className="py-4 px-4 text-xs font-bold text-slate-900">
+                  ₺{product.salePrice}
+                </td>
+
                 <td className="py-4 px-4 text-xs font-black text-brand-purple">
                   ₺{product.totalIncome}
                 </td>
+
                 <td className="py-4 px-4 text-xs font-bold text-slate-500">
                   {product.stock} adet
                 </td>
+
                 <td className="py-4 px-4 text-xs font-medium text-slate-400">
                   {product.date}
                 </td>
+
                 <td className="py-4 px-4">
                   {product.stock <= 5 && product.is_active ? (
                     <span className="text-[10px] font-black bg-red-50 text-red-500 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
@@ -84,9 +99,12 @@ export const ProductTable = ({
                     </span>
                   )}
                 </td>
+
                 <td className="py-4 pr-8 text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <div className="flex items-center justify-end gap-1 opacity-100 transition-all duration-200">
+                    
                     <button
+                      type="button"
                       onClick={() => onToggleStatus(product.id)}
                       title={
                         product.is_active ? "Satıştan Kaldır" : "Satışa Aç"
@@ -95,18 +113,25 @@ export const ProductTable = ({
                     >
                       <Power className="w-3.5 h-3.5" />
                     </button>
+
                     <button
+                      type="button"
                       onClick={() => onEdit(product)}
+                      title="Ürünü Düzenle"
                       className="p-1.5 text-slate-400 hover:text-brand-purple rounded-lg hover:bg-purple-50 transition-all cursor-pointer"
                     >
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
+                    
                     <button
+                      type="button"
                       onClick={() => onDelete(product.id)}
+                      title="Ürünü Sil"
                       className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
+
                   </div>
                 </td>
               </tr>
