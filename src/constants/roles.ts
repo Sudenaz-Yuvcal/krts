@@ -11,4 +11,11 @@ export const STAFF_ROLES = [
   { id: "kas_tasarim", label: "Kaş Laminasyonu & İpek Kirpik Uzmanı" },
   { id: "cilt_bakim", label: "Medikal Cilt Bakımı & Estetisyen" },
   { id: "salon_koordinator", label: "Salon Koordinatörü & Resepsiyonist" },
+  { id: "bolgesel_incelme", label: "Bölgesel İncelme & Vücut Şekillendirme Uzmanı" },
+  { id: "lazer_epilasyon", label: "Lazer Epilasyon Teknisyeni" },
+  { id: "masaj_terapi", label: "Masöz & Sertifikalı Masaj Terapisti" },
+  { id: "solaryum_bronzluk", label: "Solaryum & Sprey Tan Bronzlaşma Uzmanı" },
+  { id: "sac_simulasyon", label: "Saç Simülasyonu & Saç Pigmentasyon Artist" },
+  { id: "salon_asistani", label: "Salon Asistanı & Junior Kuaför" },
+  { id: "hijyen_servis", label: "Salon Hijyen & İkram Sorumlusu" }
 ];

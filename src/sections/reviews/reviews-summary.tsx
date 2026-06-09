@@ -8,16 +8,17 @@ import {
   Star,
   MessageSquare,
 } from "lucide-react";
+import React from "react";
 
 interface SummaryProps {
   averageRating: string;
   totalReviews: number;
   statusFilter: string;
-  setStatusFilter: (val: any) => void;
+  setStatusFilter: (val: string) => void;
   ratingFilter: string;
-  setRatingFilter: (val: any) => void;
+  setRatingFilter: (val: string) => void;
   sortOrder: string;
-  setSortOrder: (val: any) => void;
+  setSortOrder: (val: string) => void;
 }
 
 export const ReviewsSummary = ({
@@ -81,7 +82,7 @@ export const ReviewsSummary = ({
             <MessageSquare className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
               className="w-full sm:w-auto text-xs font-semibold text-slate-600 bg-white pl-9 pr-8 py-2 rounded-xl border border-slate-200/80 focus:outline-none focus:border-brand-purple appearance-none shadow-2xs cursor-pointer transition-all"
             >
               <option value="all">Tüm Yorumlar</option>
@@ -95,7 +96,7 @@ export const ReviewsSummary = ({
             <Star className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
             <select
               value={ratingFilter}
-              onChange={(e) => setRatingFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setRatingFilter(e.target.value)}
               className="w-full sm:w-auto text-xs font-semibold text-slate-600 bg-white pl-9 pr-8 py-2 rounded-xl border border-slate-200/80 focus:outline-none focus:border-brand-purple appearance-none shadow-2xs cursor-pointer transition-all"
             >
               <option value="all">Tüm Puanlar</option>
@@ -109,7 +110,7 @@ export const ReviewsSummary = ({
             <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
             <select
               value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortOrder(e.target.value)}
               className="w-full sm:w-auto text-xs font-semibold text-slate-600 bg-white pl-9 pr-8 py-2 rounded-xl border border-slate-200/80 focus:outline-none focus:border-brand-purple appearance-none shadow-2xs cursor-pointer transition-all"
             >
               <option value="newest">En Yeni Yorumlar</option>
