@@ -3,8 +3,6 @@ import { createPortal } from "react-dom";
 import {
   Bell,
   HeadphonesIcon,
-  RefreshCw,
-  Sparkles,
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
@@ -30,13 +28,7 @@ interface NotificationItem {
   employee_name?: string;
 }
 
-interface HairdresserHeaderProps {
-  setUserRole: React.Dispatch<
-    React.SetStateAction<"hairdresser" | "admin" | "brand" | any>
-  >;
-}
-
-export function HairdresserHeader({ setUserRole }: HairdresserHeaderProps) {
+export function HairdresserHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<"all" | "today" | "yesterday">(
     "all",
@@ -239,26 +231,6 @@ export function HairdresserHeader({ setUserRole }: HairdresserHeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => setUserRole("brand")}
-          className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
-        >
-          <Sparkles className="w-4 h-4 text-purple-400 group-hover:text-purple-600 transition-colors" />
-          <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
-            Marka Paneline Geç
-          </span>
-        </button>
-
-        <button
-          onClick={() => setUserRole("admin")}
-          className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
-        >
-          <RefreshCw className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
-          <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
-            Yönetici Paneline Geç
-          </span>
-        </button>
-
         <button
           onClick={() => setIsAssistantOpen(true)}
           className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"

@@ -45,12 +45,10 @@ export function PackagesView() {
 
   const [inputPlans, setInputPlans] = useState<PackagePlan[]>([]);
 
-  // 🔄 SUPABASE'DEN VERİLERİ ÇEKME VE POPÜLARİTE HESAPLAMA
   const fetchPackagesAndPopularity = async () => {
     try {
       setLoading(true);
 
-      // 1. `package_plans` tablosundaki tüm kolonları tam olarak çekiyoruz
       const { data: dbPlans, error: plansError } = await supabase
         .from("package_plans")
         .select(
@@ -60,7 +58,6 @@ export function PackagesView() {
 
       if (plansError) throw plansError;
 
-      // 2. Markalar ve Salonlar tablolarından hangi paketlerin seçildiğini sayıyoruz
       const { data: brandPlans } = await supabase
         .from("brands")
         .select("package_plan_id");
@@ -87,7 +84,6 @@ export function PackagesView() {
         }
       });
 
-      // 3. Gelen veriyi state'e atarken bulduğumuz popüler ID ile eşleştiriyoruz
       if (dbPlans) {
         const finalPlans = dbPlans.map((plan) => ({
           ...plan,
@@ -149,7 +145,6 @@ export function PackagesView() {
     }
   };
 
-  // 🎯 Sekmeye göre süzülen veritabanı paketleri
   const filteredPlans = plans.filter((p) => p.target_audience === activeTab);
 
   if (loading) {
@@ -163,7 +158,6 @@ export function PackagesView() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-6 py-2 bg-white text-slate-800 antialiased overflow-hidden">
-      {/* ÜST BAŞLIK */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
         <div>
           <div className="flex items-center gap-1.5 text-purple-600">
@@ -189,7 +183,6 @@ export function PackagesView() {
         </button>
       </div>
 
-      {/* SEKMELER */}
       <div className="flex gap-2 border-b border-slate-100 pb-1">
         <button
           onClick={() => setActiveTab("salon")}
@@ -207,7 +200,6 @@ export function PackagesView() {
         </button>
       </div>
 
-      {/* VERİTABANINDAN GELEN PAKET KARTLARI LİSTESİ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {filteredPlans.length === 0 ? (
           <div className="col-span-1 md:col-span-3 text-center py-12 border-2 border-dashed border-slate-100 rounded-2xl text-xs font-black uppercase text-slate-400 tracking-wider">
@@ -223,7 +215,6 @@ export function PackagesView() {
                   : "border-slate-100 hover:border-slate-200"
               }`}
             >
-              {/* Popüler Rozeti */}
               {plan.is_popular && (
                 <span className="absolute -top-2.5 left-4 font-black text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-md shadow-xs flex items-center gap-1 bg-purple-600 text-white">
                   <Sparkles className="w-2.5 h-2.5" /> En Çok Tercih Edilen
@@ -267,14 +258,12 @@ export function PackagesView() {
                   </div>
                 </div>
 
-                {/* discount_badge sütunu veritabanından çekiliyor */}
                 {plan.discount_badge && (
                   <div className="bg-slate-900 text-white text-[9px] font-black uppercase tracking-wider w-fit px-2 py-0.5 rounded">
                     {plan.discount_badge}
                   </div>
                 )}
 
-                {/* admin_note sütunu veritabanından çekiliyor */}
                 {plan.admin_note && (
                   <div className="bg-purple-50/50 border border-purple-100/60 text-purple-700 text-[10px] font-bold p-2 rounded-lg flex items-center gap-1.5">
                     <BadgePercent className="w-3.5 h-3.5 text-purple-500 shrink-0" />
@@ -301,7 +290,6 @@ export function PackagesView() {
         )}
       </div>
 
-      {/* MODAL ALANI */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
           <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden border border-slate-50 animate-in fade-in zoom-in-95 duration-150">

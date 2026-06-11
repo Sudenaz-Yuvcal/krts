@@ -20,7 +20,6 @@ import {
 } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
 
-// Arayüz için yerel veri tipleri
 interface BrandRow {
   id: string;
   brand_name: string;
@@ -65,25 +64,21 @@ export const AdminDashboardView: React.FC = () => {
     "all",
   );
 
-  // Finansal Stateler
   const [commissionProfit, setCommissionProfit] = useState<number>(0);
   const [packageProfit, setPackageProfit] = useState<number>(0);
 
-  // Grafik ve Tablo Verileri
   const [graphData, setGraphData] = useState<TimelineStat[]>([]);
   const [topBrands, setTopBrands] = useState<TopBrandStat[]>([]);
   const [activeSalonsCount, setActiveSalonsCount] = useState<number>(0);
   const [ecosystemCustomersCount, setEcosystemCustomersCount] =
     useState<number>(0);
 
-  // 🔔 Onay bekleyen yeni markaları tutacak dinamik liste state'i
   const [pendingBrands, setPendingBrands] = useState<BrandRow[]>([]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 1. Onay Bekleyen Markaları Çekiyoruz (profiles tablosunda is_approved = false olan markalar)
       const { data: approvedProfiles, error: profileErr } = await supabase
         .from("profiles")
         .select("id")
@@ -107,7 +102,6 @@ export const AdminDashboardView: React.FC = () => {
         }
       }
 
-      // 2. Sistem Sayaçları
       const { count: salonCount } = await supabase
         .from("salons")
         .select("*", { count: "exact", head: true });
@@ -118,7 +112,6 @@ export const AdminDashboardView: React.FC = () => {
         .select("*", { count: "exact", head: true });
       if (customerCount) setEcosystemCustomersCount(customerCount);
 
-      // 3. Sipariş Verileri
       const { data: dbOrders, error: ordersError } = await supabase
         .from("orders")
         .select(
@@ -148,7 +141,6 @@ export const AdminDashboardView: React.FC = () => {
         }),
       );
 
-      // 4. Lisans Gelirleri
       const { data: dbPackages, error: pkgError } = await supabase
         .from("package_orders")
         .select(
@@ -182,7 +174,6 @@ export const AdminDashboardView: React.FC = () => {
       setCommissionProfit(totalCommissionEarnings);
       setPackageProfit(totalPackageEarnings);
 
-      // 5. Marka Dağılım Map'i
       const brandMap: { [key: string]: { volume: number; comm: number } } = {};
       formattedOrders.forEach((o) => {
         if (!brandMap[o.brand_name])
@@ -208,7 +199,6 @@ export const AdminDashboardView: React.FC = () => {
           .sort((a, b) => b.earnedCommission - a.earnedCommission),
       );
 
-      // 6. Grafik Zaman Çizelgesi
       const daysOfWeek = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
       const limit = timeFilter === "weekly" ? 7 : 12;
 
@@ -248,7 +238,6 @@ export const AdminDashboardView: React.FC = () => {
     }
   };
 
-  // 🚀 ADMİNİN MARKAYI ONAYLADIĞI TETİKLEYİCİ FONKSİYON
   const handleApproveBrand = async (brandId: string) => {
     try {
       setBtnLoading(brandId);
@@ -283,7 +272,6 @@ export const AdminDashboardView: React.FC = () => {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 space-y-6 py-2 bg-white text-slate-800 antialiased overflow-hidden">
-      {/* BAŞLIK ALANI */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
           <h2 className="text-xl font-black tracking-tight text-slate-900">
@@ -311,7 +299,6 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* 🔔 ONAY BEKLEYEN MARKALAR LİSTESİ */}
       {pendingBrands.length > 0 && (
         <div className="bg-amber-50/40 border border-amber-200/60 rounded-3xl p-6 space-y-4">
           <div className="flex items-center gap-2">
@@ -376,7 +363,6 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       )}
 
-      {/* MALİ KARTLAR */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4 border-b border-slate-100">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -417,7 +403,6 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* GRAFİK ALANI */}
       <div className="w-full min-w-0">
         <div style={{ width: "100%", height: "300px" }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -483,7 +468,6 @@ export const AdminDashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* ALT SEKMELER VE SİSTEM ÖZETLERİ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
         <div className="space-y-3">
           <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5">

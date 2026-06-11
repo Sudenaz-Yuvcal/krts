@@ -6,7 +6,6 @@ import {
   TrendingUp,
   Package,
   Activity,
-  RefreshCw,
 } from "lucide-react";
 
 interface BrandNotificationItem {
@@ -18,15 +17,9 @@ interface BrandNotificationItem {
   day: "today" | "yesterday";
 }
 
-interface BrandHeaderProps {
-  setUserRole: React.Dispatch<
-    React.SetStateAction<"hairdresser" | "admin" | "brand">
-  >;
-}
-
 type TimeFilterType = "all" | "today" | "yesterday";
 
-export function BrandHeader({ setUserRole }: BrandHeaderProps) {
+export function BrandHeader() {
   const [isOpen, setIsOpen] = useState(false);
   const [timeFilter, setTimeFilter] = useState<TimeFilterType>("all");
 
@@ -116,16 +109,6 @@ export function BrandHeader({ setUserRole }: BrandHeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => setUserRole("hairdresser")}
-          className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-xs hover:border-purple-200 hover:text-purple-600 transition-all group cursor-pointer h-11 shrink-0"
-        >
-          <RefreshCw className="w-4 h-4 text-slate-400 group-hover:text-purple-600 transition-colors" />
-          <span className="text-xs font-black text-slate-600 group-hover:text-purple-600 transition-colors">
-            Kuaför Paneline Geç
-          </span>
-        </button>
-
         <div className="relative z-50">
           <button
             onClick={() => setIsOpen(!isOpen)}

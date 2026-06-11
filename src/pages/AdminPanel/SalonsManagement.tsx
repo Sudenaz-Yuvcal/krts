@@ -59,7 +59,6 @@ export function SalonsManagementView() {
 
   const [copied, setCopied] = useState(false);
 
-  // 🔄 1. ADIM: VERİTABANINDAN SALONLARI VE BAŞVURULARI ÇEKME
   const fetchSalonsData = async () => {
     try {
       setLoading(true);
@@ -79,7 +78,6 @@ export function SalonsManagementView() {
           .filter((p) => !p.is_approved)
           .map((p) => p.id);
 
-        // A. Onaylı Salonları Çek
         if (approvedIds.length > 0) {
           const { data: dbSalons } = await supabase
             .from("salons")
@@ -115,7 +113,6 @@ export function SalonsManagementView() {
           setSalons([]);
         }
 
-        // B. Onay Bekleyen Salon Başvurularını Çek
         if (pendingIds.length > 0) {
           const { data: dbPending } = await supabase
             .from("salons")
@@ -169,7 +166,6 @@ export function SalonsManagementView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // 🚀 2. ADIM: ONAYLAMA
   const handleApproveApplication = async (app: Application) => {
     try {
       setBtnLoading(app.id);
@@ -202,7 +198,6 @@ export function SalonsManagementView() {
     }
   };
 
-  // ❌ 3. ADIM: REDDETME
   const handleRejectApplication = async (id: string) => {
     try {
       setBtnLoading(id);
@@ -255,7 +250,6 @@ export function SalonsManagementView() {
 
   return (
     <div className="space-y-8">
-      {/* ÜST BAŞLIK ALANI */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">
@@ -281,7 +275,6 @@ export function SalonsManagementView() {
         </button>
       </div>
 
-      {/* BAŞVURULAR KUTUSU */}
       {applications.length > 0 && (
         <div className="bg-purple-50/40 border border-purple-100/70 p-6 rounded-[32px] space-y-4">
           <div className="flex items-center gap-2">
@@ -324,7 +317,6 @@ export function SalonsManagementView() {
         </div>
       )}
 
-      {/* ARAMA BARBARI */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4.5 h-4.5" />
@@ -349,7 +341,6 @@ export function SalonsManagementView() {
         </div>
       </div>
 
-      {/* TABLO */}
       {filteredSalons.length === 0 ? (
         <div className="bg-white rounded-3xl border-slate-200 p-12 text-center border-dashed border-2 text-xs font-black uppercase text-slate-400 tracking-wider">
           Sistemde henüz aktif bir kuaför salonu bulunmuyor.
@@ -428,7 +419,6 @@ export function SalonsManagementView() {
         </div>
       )}
 
-      {/* SÖZLEŞME BAŞVURU DETAY MODAL */}
       {isDetailModalOpen && selectedApp && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-[36px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
@@ -532,7 +522,6 @@ export function SalonsManagementView() {
         </div>
       )}
 
-      {/* ANALİZ ÖZET MODAL */}
       {isSalonModalOpen && selectedSalon && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">

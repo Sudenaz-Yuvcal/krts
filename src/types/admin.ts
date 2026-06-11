@@ -1,5 +1,3 @@
-// src/types/adminDashboard.types.ts
-
 export interface TimelineStat {
   label: string;
   dateString: string;

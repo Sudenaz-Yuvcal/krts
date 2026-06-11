@@ -18,9 +18,8 @@ import {
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
 
-// Arayüz için güncellenmiş veri tipleri
 interface Brand {
-  id: string; // Supabase UUID uyumu için string yapıldı
+  id: string; 
   name: string;
   category: string;
   activeProducts: number;
@@ -28,7 +27,7 @@ interface Brand {
 }
 
 interface Application {
-  id: string; // Supabase UUID uyumu için string yapıldı
+  id: string; 
   name: string;
   category: string;
   requestedProducts: number;
@@ -54,16 +53,13 @@ export function BrandPartnershipsView() {
   const [selectedApp, setSelectedApp] = useState<Application | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Dinamik veritabanı stateleri
   const [brands, setBrands] = useState<Brand[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
 
-  // 🔄 VERİTABANINDAN ONAYLI VE ONAY BEKLEYEN MARKALARI ÇEKME
   const fetchPartnershipData = async () => {
     try {
       setLoading(true);
 
-      // 1. Tüm marka rollerini profiles tablosundan durumuna göre çekiyoruz
       const { data: allBrandProfiles, error: profileErr } = await supabase
         .from("profiles")
         .select("id, is_approved, full_name")
@@ -79,7 +75,6 @@ export function BrandPartnershipsView() {
           .filter((p) => !p.is_approved)
           .map((p) => p.id);
 
-        // 2. Onaylı Markaların Detaylarını Çek (brands tablosu)
         if (approvedIds.length > 0) {
           const { data: dbApprovedBrands } = await supabase
             .from("brands")
@@ -87,13 +82,12 @@ export function BrandPartnershipsView() {
             .in("id", approvedIds);
 
           if (dbApprovedBrands) {
-            // Arayüze map'leme ve ürün sayıları için mock/gerçek entegrasyonu
             const formattedBrands: Brand[] = dbApprovedBrands.map((b) => ({
               id: b.id,
               name: b.brand_name,
               category: b.sector || "Genel Kozmetik",
-              activeProducts: 0, // İleride products tablosundan count çekilebilir
-              totalSales: 0, // İleride orders tablosundan sum çekilebilir
+              activeProducts: 0,
+              totalSales: 0, 
             }));
             setBrands(formattedBrands);
           }
@@ -101,7 +95,6 @@ export function BrandPartnershipsView() {
           setBrands([]);
         }
 
-        // 3. Onay Bekleyen Markaların Detaylarını Çek (brands tablosu)
         if (pendingIds.length > 0) {
           const { data: dbPendingBrands } = await supabase
             .from("brands")
@@ -119,7 +112,7 @@ export function BrandPartnershipsView() {
                 category: b.sector || "Belirtilmedi",
                 requestedProducts: 0,
                 date: new Date(b.created_at).toLocaleDateString("tr-TR"),
-                taxNumber: "Potansiyel Kayıt", // Vergi numarası alanı tablonuza eklendiğinde b.tax_number yapılabilir
+                taxNumber: "Potansiyel Kayıt", 
                 authorizedPerson: matchedProfile?.full_name || "Yetkili Kişi",
                 phone: b.phone || "",
                 email: b.email || "",
@@ -149,12 +142,10 @@ export function BrandPartnershipsView() {
     setIsCommissionModalOpen(false);
   };
 
-  // 🚀 BAŞVURUYU VERİTABANINDA ONAYLAMA FONKSİYONU
   const handleApprove = async (app: Application) => {
     try {
       setBtnLoading(app.id);
 
-      // profiles tablosunda kilidi kaldırıp is_approved = true yapıyoruz
       const { error } = await supabase
         .from("profiles")
         .update({ is_approved: true })
@@ -162,7 +153,6 @@ export function BrandPartnershipsView() {
 
       if (error) throw error;
 
-      // Local state güncellemesi (Arayüzde anlık yer değiştirme)
       const newApprovedBrand: Brand = {
         id: app.id,
         name: app.name,
@@ -181,12 +171,10 @@ export function BrandPartnershipsView() {
     }
   };
 
-  // ❌ BAŞVURUYU REDDETME / SİLME FONKSİYONU
   const handleReject = async (id: string) => {
     try {
       setBtnLoading(id);
 
-      // Kaydı profiles veya brands tablosundan silebilir ya da statusunu değiştirebilirsiniz
       const { error } = await supabase.from("profiles").delete().eq("id", id);
 
       if (error) throw error;
@@ -218,7 +206,6 @@ export function BrandPartnershipsView() {
 
   return (
     <div className="space-y-8">
-      {/* ÜST BAŞLIK */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">
@@ -242,7 +229,6 @@ export function BrandPartnershipsView() {
         </button>
       </div>
 
-      {/* FİNANSAL ÖZET KARTLARI */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
@@ -271,7 +257,6 @@ export function BrandPartnershipsView() {
         </div>
       </div>
 
-      {/* ONAY BEKLEYEN BAŞVURULAR (EMPTY STATE DESTEKLİ) */}
       {applications.length > 0 ? (
         <div className="bg-amber-50/40 border border-amber-100/70 p-6 rounded-[32px] space-y-4">
           <div className="flex items-center gap-2">
@@ -319,7 +304,6 @@ export function BrandPartnershipsView() {
         </div>
       )}
 
-      {/* ARAMA ALANI */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs">
         <div className="relative w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4.5 h-4.5" />
@@ -333,7 +317,6 @@ export function BrandPartnershipsView() {
         </div>
       </div>
 
-      {/* ONAYLI MARKALAR TABLOSU */}
       {filteredBrands.length === 0 ? (
         <div className="bg-white rounded-3xl  border-slate-200 p-12 text-center border-dashed border-2 text-xs font-black uppercase text-slate-400 tracking-wider">
           Sistemde henüz onaylanmış bir B2B tedarikçi marka bulunmuyor.
@@ -402,7 +385,6 @@ export function BrandPartnershipsView() {
         </div>
       )}
 
-      {/* SABİT ORAN MODAL */}
       {isCommissionModalOpen && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-50 animate-in fade-in zoom-in-95 duration-200">
@@ -459,7 +441,6 @@ export function BrandPartnershipsView() {
         </div>
       )}
 
-      {/* DETAY BAŞVURU MODAL */}
       {isDetailModalOpen && selectedApp && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-3xl rounded-[36px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -550,7 +531,6 @@ export function BrandPartnershipsView() {
                 </div>
               </div>
 
-              {/* Aksiyon Butonları */}
               <div className="flex gap-3 pt-2">
                 <button
                   disabled={btnLoading !== null}
