@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Eye,
@@ -7,37 +7,29 @@ import {
   X,
   Copy,
   Check,
-  MapPin,
   UserPlus,
   Clock,
   Building2,
-  Phone,
   User,
   ShieldCheck,
   FileText,
-  Mail,
+  Loader2,
 } from "lucide-react";
-
-type SalonPackage =
-  | "2 Yıllık Ekosistem Dev"
-  | "1 Yıllık Süper Özel"
-  | "6 Aylık Kurumsal";
-type SalonStatus = "Aktif" | "Donduruldu";
+import { supabase } from "../../lib/supabaseClient";
 
 interface Salon {
-  id: number;
+  id: string;
   name: string;
   city: string;
   owner: string;
   phone: string;
-  package: SalonPackage;
-  status: SalonStatus;
+  package_name: string;
+  status: "Aktif" | "Donduruldu";
   income: string;
-  marketplaceVolume: string;
 }
 
 interface Application {
-  id: number;
+  id: string;
   name: string;
   city: string;
   owner: string;
@@ -45,81 +37,18 @@ interface Application {
   email: string;
   taxNumber: string;
   date: string;
-  package: SalonPackage;
-  description: string;
+  package_name: string;
+  package_id: string;
 }
 
-const INITIAL_SALONS: Salon[] = [
-  {
-    id: 1,
-    name: "Glow & Go Studio",
-    city: "İstanbul, Beşiktaş",
-    owner: "Zeynep Yılmaz",
-    phone: "0532 123 45 67",
-    package: "1 Yıllık Süper Özel",
-    status: "Aktif",
-    income: "₺22,788",
-    marketplaceVolume: "₺45,000",
-  },
-  {
-    id: 2,
-    name: "Gentlemen's Club",
-    city: "Ankara, Çankaya",
-    owner: "Murat Demir",
-    phone: "0542 987 65 43",
-    package: "2 Yıllık Ekosistem Dev",
-    status: "Aktif",
-    income: "₺33,576",
-    marketplaceVolume: "₺85,000",
-  },
-  {
-    id: 4,
-    name: "Vogue Beauty",
-    city: "Bursa, Nilüfer",
-    owner: "Selin Şahin",
-    phone: "0533 111 22 33",
-    package: "1 Yıllık Süper Özel",
-    status: "Donduruldu",
-    income: "₺4,100",
-    marketplaceVolume: "₺32,000",
-  },
-];
-
-const INITIAL_APPLICATIONS: Application[] = [
-  {
-    id: 101,
-    name: "Monaco Hair Design",
-    city: "Antalya, Muratpaşa",
-    owner: "Caner Tekin",
-    phone: "+90 536 777 88 99",
-    email: "caner@monacohair.com",
-    taxNumber: "4410982231",
-    date: "Bugün",
-    package: "2 Yıllık Ekosistem Dev",
-    description:
-      "Antalya merkezli 3 şubeli salon zincirimizin dijital kasa ve B2B tedarik altyapısını KRTS Ekosistemine taşımak istiyoruz.",
-  },
-  {
-    id: 102,
-    name: "İzmir Güzellik Sarayı",
-    city: "İzmir, Karşıyaka",
-    owner: "Merve Aydın",
-    phone: "+90 0541 222 33 44",
-    email: "merve.aydin@izmirguzellik.com",
-    taxNumber: "1120448899",
-    date: "Dün",
-    package: "6 Aylık Kurumsal",
-    description:
-      "Yeni açılacak olan lüks segment güzellik merkezimiz için entegre randevu ve B2B pazar yeri modüllerini aktif etmek istiyoruz.",
-  },
-];
-
 export function SalonsManagementView() {
-  const [salons, setSalons] = useState<Salon[]>(INITIAL_SALONS);
-  const [applications, setApplications] = useState<Application[]>(INITIAL_APPLICATIONS);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [btnLoading, setBtnLoading] = useState<string | null>(null);
+
+  const [salons, setSalons] = useState<Salon[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [packageFilter, setPackageFilter] = useState("Tüm Paketler");
   const [statusFilter, setStatusFilter] = useState("Tüm Durumlar");
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -130,50 +59,173 @@ export function SalonsManagementView() {
 
   const [copied, setCopied] = useState(false);
 
+  // 🔄 1. ADIM: VERİTABANINDAN SALONLARI VE BAŞVURULARI ÇEKME
+  const fetchSalonsData = async () => {
+    try {
+      setLoading(true);
+
+      const { data: profiles, error: profileErr } = await supabase
+        .from("profiles")
+        .select("id, is_approved, full_name")
+        .eq("role", "salon");
+
+      if (profileErr) throw profileErr;
+
+      if (profiles && profiles.length > 0) {
+        const approvedIds = profiles
+          .filter((p) => p.is_approved)
+          .map((p) => p.id);
+        const pendingIds = profiles
+          .filter((p) => !p.is_approved)
+          .map((p) => p.id);
+
+        // A. Onaylı Salonları Çek
+        if (approvedIds.length > 0) {
+          const { data: dbSalons } = await supabase
+            .from("salons")
+            .select(
+              `
+              salon_id,
+              salon_name,
+              package_plan_id,
+              package_plans ( name, monthly_price, months )
+            `,
+            )
+            .in("salon_id", approvedIds);
+
+          if (dbSalons) {
+            const formattedSalons: Salon[] = dbSalons.map((s: any) => {
+              const matchedProfile = profiles.find((p) => p.id === s.salon_id);
+              const monthly = s.package_plans?.monthly_price || 0;
+              const months = s.package_plans?.months || 1;
+              return {
+                id: s.salon_id,
+                name: s.salon_name,
+                city: "Belirtilmedi",
+                owner: matchedProfile?.full_name || "Yetkili",
+                phone: "Sistem Kayıtlı",
+                package_name: s.package_plans?.name || "Özel Plan",
+                status: "Aktif",
+                income: `₺${(monthly * months).toLocaleString("tr-TR")}`,
+              };
+            });
+            setSalons(formattedSalons);
+          }
+        } else {
+          setSalons([]);
+        }
+
+        // B. Onay Bekleyen Salon Başvurularını Çek
+        if (pendingIds.length > 0) {
+          const { data: dbPending } = await supabase
+            .from("salons")
+            .select(
+              `
+              salon_id,
+              salon_name,
+              created_at,
+              package_plan_id,
+              package_plans ( name )
+            `,
+            )
+            .in("salon_id", pendingIds);
+
+          if (dbPending) {
+            const formattedApps: Application[] = dbPending.map((s: any) => {
+              const matchedProfile = profiles.find((p) => p.id === s.salon_id);
+              return {
+                id: s.salon_id,
+                name: s.salon_name,
+                city: "Lokasyon Girişi Bekleniyor",
+                owner: matchedProfile?.full_name || "Salon Sahibi",
+                phone: "İletişim Hattı",
+                email: "E-Posta Adresi",
+                taxNumber: "Potansiyel Künye",
+                date: new Date(s.created_at).toLocaleDateString("tr-TR"),
+                package_name: s.package_plans?.name || "Başlangıç Paketi",
+                package_id: s.package_plan_id || "",
+              };
+            });
+            setApplications(formattedApps);
+          }
+        } else {
+          setApplications([]);
+        }
+      }
+    } catch (err) {
+      console.error("Salon verileri yüklenirken hata:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSalonsData();
+  }, []);
+
   const handleCopyLink = () => {
-    navigator.clipboard.writeText("https://ekosistem.salon/b2b-kayit-ol");
+    navigator.clipboard.writeText("http://localhost:3000/salon/kayit");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleApproveApplication = (app: Application) => {
-    const newSalon: Salon = {
-      id: Date.now(),
-      name: app.name,
-      city: app.city,
-      owner: app.owner,
-      phone: app.phone,
-      package: app.package,
-      status: "Aktif",
-      income:
-        app.package === "2 Yıllık Ekosistem Dev"
-          ? "₺33,576"
-          : app.package === "1 Yıllık Süper Özel"
-            ? "₺22,788"
-            : "₺14,994",
-      marketplaceVolume: "₺0",
-    };
+  // 🚀 2. ADIM: ONAYLAMA
+  const handleApproveApplication = async (app: Application) => {
+    try {
+      setBtnLoading(app.id);
 
-    setSalons((prev) => [newSalon, ...prev]);
-    setApplications((prev) => prev.filter((a) => a.id !== app.id));
-    setIsDetailModalOpen(false);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_approved: true })
+        .eq("id", app.id);
+
+      if (error) throw error;
+
+      const newSalon: Salon = {
+        id: app.id,
+        name: app.name,
+        city: app.city,
+        owner: app.owner,
+        phone: app.phone,
+        package_name: app.package_name,
+        status: "Aktif",
+        income: "Hesaplanıyor",
+      };
+
+      setSalons((prev) => [newSalon, ...prev]);
+      setApplications((prev) => prev.filter((a) => a.id !== app.id));
+      setIsDetailModalOpen(false);
+    } catch (err) {
+      console.error("Salon onaylanırken hata oluştu:", err);
+    } finally {
+      setBtnLoading(null);
+    }
   };
 
-  const handleRejectApplication = (id: number) => {
-    setApplications((prev) => prev.filter((a) => a.id !== id));
-    setIsDetailModalOpen(false);
+  // ❌ 3. ADIM: REDDETME
+  const handleRejectApplication = async (id: string) => {
+    try {
+      setBtnLoading(id);
+
+      const { error } = await supabase.from("profiles").delete().eq("id", id);
+      if (error) throw error;
+
+      setApplications((prev) => prev.filter((a) => a.id !== id));
+      setIsDetailModalOpen(false);
+    } catch (err) {
+      console.error("Başvuru reddedilirken hata:", err);
+    } finally {
+      setBtnLoading(null);
+    }
   };
 
-  const toggleSalonStatus = (id: number) => {
+  const toggleSalonStatus = (id: string) => {
     setSalons((prev) =>
       prev.map((salon) => {
         if (salon.id === id) {
           return {
             ...salon,
-            status:
-              salon.status === "Aktif"
-                ? ("Donduruldu" as SalonStatus)
-                : ("Aktif" as SalonStatus),
+            status: salon.status === "Aktif" ? "Donduruldu" : "Aktif",
           };
         }
         return salon;
@@ -184,22 +236,29 @@ export function SalonsManagementView() {
   const filteredSalons = salons.filter((salon) => {
     const matchesSearch =
       salon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      salon.owner.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      salon.city.toLowerCase().includes(searchQuery.toLowerCase());
+      salon.owner.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesPackage =
-      packageFilter === "Tüm Paketler" || salon.package === packageFilter;
     const matchesStatus =
       statusFilter === "Tüm Durumlar" || salon.status === statusFilter;
 
-    return matchesSearch && matchesPackage && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-100 flex flex-col items-center justify-center gap-2 text-center py-20 text-xs text-purple-600 font-bold tracking-wide">
+        <Loader2 className="w-7 h-7 animate-spin" />
+        Salon Altyapı Matrisi Bağlanıyor...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
+      {/* ÜST BAŞLIK ALANI */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">
             Salon ve Bayi Altyapı Yönetimi
           </h1>
           <p className="text-sm text-slate-400 mt-1">
@@ -209,7 +268,7 @@ export function SalonsManagementView() {
         </div>
         <button
           onClick={handleCopyLink}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl text-xs transition-all shadow-xs cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl text-xs transition-all shadow-xs cursor-pointer uppercase tracking-wider"
         >
           {copied ? (
             <Check className="w-4 h-4 text-emerald-400" />
@@ -222,6 +281,7 @@ export function SalonsManagementView() {
         </button>
       </div>
 
+      {/* BAŞVURULAR KUTUSU */}
       {applications.length > 0 && (
         <div className="bg-purple-50/40 border border-purple-100/70 p-6 rounded-[32px] space-y-4">
           <div className="flex items-center gap-2">
@@ -242,17 +302,14 @@ export function SalonsManagementView() {
                     {app.name}
                   </div>
                   <div className="text-[11px] text-slate-400 font-bold flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {app.city}
-                    </span>
-                    <span className="w-1 h-1 bg-slate-200 rounded-full" />
                     <span className="text-purple-600 font-black">
-                      {app.package}
+                      {app.package_name}
                     </span>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedApp(app);
                     setIsDetailModalOpen(true);
@@ -267,6 +324,7 @@ export function SalonsManagementView() {
         </div>
       )}
 
+      {/* ARAMA BARBARI */}
       <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4.5 h-4.5" />
@@ -274,25 +332,15 @@ export function SalonsManagementView() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Onaylı salon adı, yetkili veya konum ara..."
+            placeholder="Onaylı salon adı veya yetkili ara..."
             className="w-full pl-11 pr-4 py-2.5 text-xs bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:border-purple-200 transition-all font-bold text-slate-700"
           />
         </div>
-        <div className="flex gap-2">
-          <select
-            value={packageFilter}
-            onChange={(e) => setPackageFilter(e.target.value)}
-            className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-600 focus:outline-none"
-          >
-            <option>Tüm Paketler</option>
-            <option>2 Yıllık Ekosistem Dev</option>
-            <option>1 Yıllık Süper Özel</option>
-            <option>6 Aylık Kurumsal</option>
-          </select>
+        <div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-600 focus:outline-none"
+            className="px-3 py-2 text-xs bg-slate-50 border border-slate-100 rounded-xl font-black text-slate-600 focus:outline-none cursor-pointer"
           >
             <option>Tüm Durumlar</option>
             <option>Aktif</option>
@@ -301,96 +349,89 @@ export function SalonsManagementView() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              <th className="p-5 pl-8">Sistemdeki Salon</th>
-              <th className="p-5">Konum / Şehir</th>
-              <th className="p-5">Aktif Paket</th>
-              <th className="p-5">Kasa Lisans Bedeli</th>
-              <th className="p-5">Durum</th>
-              <th className="p-5 pr-8 text-right">Eylemler</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50 text-xs font-bold text-slate-600">
-            {filteredSalons.map((salon) => (
-              <tr
-                key={salon.id}
-                className="hover:bg-slate-50/60 transition-all"
-              >
-                <td className="p-5 pl-8">
-                  <div className="font-black text-slate-800 text-sm">
-                    {salon.name}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {salon.owner} • {salon.phone}
-                  </div>
-                </td>
-                <td className="p-5">
-                  <span className="text-slate-500 font-medium">
-                    {salon.city}
-                  </span>
-                </td>
-                <td className="p-5">
-                  <span
-                    className={`px-2.5 py-1 rounded-lg text-[10px] border ${
-                      salon.package === "2 Yıllık Ekosistem Dev"
-                        ? "bg-indigo-50 border-indigo-100 text-indigo-600"
-                        : salon.package === "1 Yıllık Süper Özel"
-                          ? "bg-purple-50 border-purple-100 text-purple-600"
-                          : "bg-slate-100 border-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {salon.package}
-                  </span>
-                </td>
-                <td className="p-5 text-slate-800 font-black">
-                  {salon.income}
-                </td>
-                <td className="p-5">
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-black ${
-                      salon.status === "Aktif"
-                        ? "bg-emerald-50 text-emerald-600"
-                        : "bg-amber-50 text-amber-600"
-                    }`}
-                  >
-                    {salon.status}
-                  </span>
-                </td>
-                <td className="p-5 pr-8 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => {
-                        setSelectedSalon(salon);
-                        setIsSalonModalOpen(true);
-                      }}
-                      className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition cursor-pointer"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => toggleSalonStatus(salon.id)}
-                      className={`p-2 rounded-xl transition cursor-pointer ${salon.status === "Aktif" ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"}`}
-                    >
-                      {salon.status === "Aktif" ? (
-                        <Ban className="w-4 h-4" />
-                      ) : (
-                        <CheckCircle className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </td>
+      {/* TABLO */}
+      {filteredSalons.length === 0 ? (
+        <div className="bg-white rounded-3xl border-slate-200 p-12 text-center border-dashed border-2 text-xs font-black uppercase text-slate-400 tracking-wider">
+          Sistemde henüz aktif bir kuaför salonu bulunmuyor.
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th className="p-5 pl-8">Sistemdeki Salon</th>
+                <th className="p-5">Salon Sorumlusu</th>
+                <th className="p-5">Aktif Paket</th>
+                <th className="p-5">Toplam Kontrat Değeri</th>
+                <th className="p-5">Durum</th>
+                <th className="p-5 pr-8 text-right">Eylemler</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-50 text-xs font-bold text-slate-600">
+              {filteredSalons.map((salon) => (
+                <tr
+                  key={salon.id}
+                  className="hover:bg-slate-50/60 transition-all"
+                >
+                  <td className="p-5 pl-8">
+                    <div className="font-black text-slate-800 text-sm">
+                      {salon.name}
+                    </div>
+                  </td>
+                  <td className="p-5 text-slate-500 font-medium">
+                    {salon.owner}
+                  </td>
+                  <td className="p-5">
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] border bg-purple-50 border-purple-100 text-purple-600 uppercase">
+                      {salon.package_name}
+                    </span>
+                  </td>
+                  <td className="p-5 text-slate-800 font-black">
+                    {salon.income}
+                  </td>
+                  <td className="p-5">
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-black ${salon.status === "Aktif" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}
+                    >
+                      {salon.status}
+                    </span>
+                  </td>
+                  <td className="p-5 pr-8 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSalon(salon);
+                          setIsSalonModalOpen(true);
+                        }}
+                        className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-xl transition cursor-pointer"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleSalonStatus(salon.id)}
+                        className={`p-2 rounded-xl transition cursor-pointer ${salon.status === "Aktif" ? "text-slate-400 hover:text-rose-600 hover:bg-rose-50" : "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50"}`}
+                      >
+                        {salon.status === "Aktif" ? (
+                          <Ban className="w-4 h-4" />
+                        ) : (
+                          <CheckCircle className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
+      {/* SÖZLEŞME BAŞVURU DETAY MODAL */}
       {isDetailModalOpen && selectedApp && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-3xl rounded-[36px] shadow-2xl overflow-hidden border border-slate-100">
+          <div className="bg-white w-full max-w-3xl rounded-[36px] shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white">
@@ -406,6 +447,7 @@ export function SalonsManagementView() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsDetailModalOpen(false)}
                 className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 cursor-pointer"
               >
@@ -429,22 +471,6 @@ export function SalonsManagementView() {
                         {selectedApp.name}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 block">
-                        Hizmet Konumu
-                      </span>
-                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {selectedApp.city}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 block">
-                        Vergi / Kimlik Numarası
-                      </span>
-                      <span className="text-xs font-mono font-bold text-slate-600">
-                        {selectedApp.taxNumber}
-                      </span>
-                    </div>
                   </div>
                 </div>
 
@@ -462,57 +488,43 @@ export function SalonsManagementView() {
                         {selectedApp.owner}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                      <Mail className="w-3.5 h-3.5 text-slate-400" />{" "}
-                      {selectedApp.email}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />{" "}
-                      {selectedApp.phone}
-                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-wider pb-1 border-b border-slate-50">
-                  <FileText className="w-3.5 h-3.5 text-purple-500" /> İşletme
-                  Notu & Başvuru Amacı
+                  <FileText className="w-3.5 h-3.5 text-purple-500" /> Seçilen
+                  Lisans Modeli Detayı
                 </div>
-                <div className="bg-slate-50 p-4 rounded-2xl space-y-3">
-                  <p className="text-xs text-slate-600 leading-relaxed font-bold">
-                    {selectedApp.description}
-                  </p>
-                  <div className="p-3.5 bg-purple-50 rounded-xl border border-purple-100 flex justify-between items-center">
-                    <span className="text-xs font-black text-purple-900">
-                      Talep Edilen Altyapı Lisans Modeli:
-                    </span>
-                    <span className="px-3 py-1 bg-purple-600 text-white rounded-lg text-xs font-black">
-                      {selectedApp.package}
-                    </span>
-                  </div>
+                <div className="bg-slate-50 rounded-2xl text-center p-4">
+                  <span className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-black uppercase">
+                    {selectedApp.package_name}
+                  </span>
                 </div>
               </div>
 
-              <p className="text-[11px] text-slate-400 font-medium">
-                Bu dijital sözleşmeyi onayladığınızda, salonun B2B yönetim
-                paneli aktif edilecek ve seçmiş olduğu lisans paketine ait
-                faturası otomatik kesilecektir.
-              </p>
-
               <div className="flex gap-3 pt-2">
                 <button
+                  type="button"
+                  disabled={btnLoading !== null}
                   onClick={() => handleRejectApplication(selectedApp.id)}
-                  className="flex-1 px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-black transition cursor-pointer border border-rose-100"
+                  className="flex-1 px-4 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-black border border-rose-100 cursor-pointer"
                 >
                   Başvuruyu Reddet
                 </button>
                 <button
+                  type="button"
+                  disabled={btnLoading !== null}
                   onClick={() => handleApproveApplication(selectedApp)}
-                  className="flex-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  className="flex-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-sm cursor-pointer uppercase tracking-wider"
                 >
-                  <Check className="w-4 h-4" /> Sözleşmeyi Onayla ve Kurulumu
-                  Başlat
+                  {btnLoading === selectedApp.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}{" "}
+                  Sözleşmeyi Onayla ve Kurulumu Başlat
                 </button>
               </div>
             </div>
@@ -520,6 +532,7 @@ export function SalonsManagementView() {
         </div>
       )}
 
+      {/* ANALİZ ÖZET MODAL */}
       {isSalonModalOpen && selectedSalon && (
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
@@ -531,6 +544,7 @@ export function SalonsManagementView() {
                 </span>
               </div>
               <button
+                type="button"
                 onClick={() => setIsSalonModalOpen(false)}
                 className="p-1.5 hover:bg-slate-200 text-slate-400 rounded-lg cursor-pointer"
               >
@@ -542,44 +556,15 @@ export function SalonsManagementView() {
                 <h3 className="text-base font-black text-slate-900">
                   {selectedSalon.name}
                 </h3>
-                <p className="text-slate-400 font-medium mt-0.5">
-                  {selectedSalon.city}
-                </p>
               </div>
               <hr className="border-slate-100" />
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    Sözleşme Sahibi
-                  </span>
-                  <span className="font-black text-slate-800 block mt-0.5">
-                    {selectedSalon.owner}
-                  </span>
-                </div>
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    İletişim Hattı
-                  </span>
-                  <span className="font-black text-slate-800 block mt-0.5">
-                    {selectedSalon.phone}
-                  </span>
-                </div>
-                <div className="bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100/50">
-                  <span className="text-[10px] text-indigo-500 font-black block">
-                    Ödenen Lisans Bedeli
-                  </span>
-                  <span className="font-black text-indigo-700 text-sm block mt-0.5">
-                    {selectedSalon.income}
-                  </span>
-                </div>
-                <div className="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100/50">
-                  <span className="text-[10px] text-purple-500 font-black block">
-                    B2B Pazar Yeri Hacmi
-                  </span>
-                  <span className="font-black text-purple-700 text-sm block mt-0.5">
-                    {selectedSalon.marketplaceVolume}
-                  </span>
-                </div>
+              <div className="bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100/50 text-center">
+                <span className="text-[10px] text-indigo-500 font-black block">
+                  Toplam Taahhüt Edilen Lisans Hacmi
+                </span>
+                <span className="font-black text-indigo-700 text-sm block mt-0.5">
+                  {selectedSalon.income}
+                </span>
               </div>
             </div>
           </div>

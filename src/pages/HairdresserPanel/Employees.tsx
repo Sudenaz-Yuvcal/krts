@@ -399,3 +399,4 @@ export const EmployeesDetail: React.FC<DetailSectionProps> = ({
     </div>
   );
 };
+export default EmployeesDetail;

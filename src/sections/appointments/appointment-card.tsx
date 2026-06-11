@@ -70,8 +70,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
     if (item.paymentStatus === "Hesaba Aktarıldı" || item.paymentStatus === "odendi") {
       return (
         <span className="text-[10px] font-black bg-emerald-50 text-emerald-600 px-2 py-1 rounded-md border border-emerald-100/50 whitespace-nowrap">
-          Hesaba Aktarıldı
-        </span>
+Randevu  Oluşturuldu        </span>
       );
     }
 
@@ -218,7 +217,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
                 Ödeme Yöntemi
               </span>
               <span className="text-xs font-bold text-slate-700">
-                Online / Kart
+               Kredi Kartı / Nakit
               </span>
             </div>
           </div>
