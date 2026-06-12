@@ -16,43 +16,20 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
-
-interface Salon {
-  id: string;
-  name: string;
-  city: string;
-  owner: string;
-  phone: string;
-  package_name: string;
-  status: "Aktif" | "Donduruldu";
-  income: string;
-}
-
-interface Application {
-  id: string;
-  name: string;
-  city: string;
-  owner: string;
-  phone: string;
-  email: string;
-  taxNumber: string;
-  date: string;
-  package_name: string;
-  package_id: string;
-}
+import type { Salon, Applications } from "../../types/admin";
 
 export function SalonsManagementView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [btnLoading, setBtnLoading] = useState<string | null>(null);
 
   const [salons, setSalons] = useState<Salon[]>([]);
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<Applications[]>([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Tüm Durumlar");
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [selectedApp, setSelectedApp] = useState<Application | null>(null);
+  const [selectedApp, setSelectedApp] = useState<Applications | null>(null);
 
   const [isSalonModalOpen, setIsSalonModalOpen] = useState(false);
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
@@ -128,7 +105,7 @@ export function SalonsManagementView() {
             .in("salon_id", pendingIds);
 
           if (dbPending) {
-            const formattedApps: Application[] = dbPending.map((s: any) => {
+            const formattedApps: Applications[] = dbPending.map((s: any) => {
               const matchedProfile = profiles.find((p) => p.id === s.salon_id);
               return {
                 id: s.salon_id,
@@ -166,7 +143,7 @@ export function SalonsManagementView() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleApproveApplication = async (app: Application) => {
+  const handleApproveApplication = async (app: Applications) => {
     try {
       setBtnLoading(app.id);
 

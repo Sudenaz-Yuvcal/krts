@@ -19,42 +19,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
+import type { TimelineStat, TopBrandStat,BrandRow,FormattedOrder } from "../../types/admin";
 
-interface BrandRow {
-  id: string;
-  brand_name: string;
-  sector: string;
-  logo_url: string | null;
-  phone: string;
-  email: string;
-  website: string;
-  created_at: string;
-  package_plan_id: string;
-}
-
-interface TimelineStat {
-  dateString: string;
-  label: string;
-  commissionAmount: number;
-  packageAmount: number;
-}
-
-interface FormattedOrder {
-  id: number;
-  total_price: number;
-  order_date: string;
-  product_name: string;
-  brand_name: string;
-  purchase_price: number;
-  quantity: number;
-}
-
-interface TopBrandStat {
-  name: string;
-  salesVolume: number;
-  earnedCommission: number;
-  percentage: number;
-}
 
 export const AdminDashboardView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);

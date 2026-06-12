@@ -12,19 +12,7 @@ import {
   Store,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
-
-interface PackagePlan {
-  id: string;
-  name: string;
-  months: number;
-  monthly_price: number;
-  discount_badge?: string;
-  is_popular?: boolean;
-  admin_note?: string;
-  target_audience: "brand" | "salon";
-  slug?: string;
-  created_at?: string;
-}
+import type { PackagePlan } from "../../types/admin";
 
 export function PackagesView() {
   const [loading, setLoading] = useState<boolean>(true);

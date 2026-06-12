@@ -1,31 +1,8 @@
 import { useState, useEffect } from "react";
 import { Search, ArrowUpDown, Loader2 } from "lucide-react";
 import { UserListTable } from "../../sections/admin/user-list-table";
-import { supabase } from "../../lib/supabaseClient"; 
-
-interface DbUser {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  phone: string | null;
-  role: string;
-  city: string | null;
-  district: string | null;
-  full_address: string | null;
-  created_at: string;
-  is_approved: boolean;
-}
-
-interface TableUser {
-  id: string;
-  originalId: string;
-  name: string;
-  email: string;
-  phone: string;
-  joinDate: string;
-  appointments: number; 
-  status: "Aktif" | "Askıda";
-}
+import { supabase } from "../../lib/supabaseClient";
+import type { DbUser, TableUser } from "../../types/admin";
 
 export function UsersManagementView() {
   const [dbUsers, setDbUsers] = useState<DbUser[]>([]);
@@ -71,7 +48,9 @@ export function UsersManagementView() {
       if (error) throw error;
 
       setDbUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, is_approved: nextStatus } : u))
+        prev.map((u) =>
+          u.id === userId ? { ...u, is_approved: nextStatus } : u,
+        ),
       );
     } catch (err) {
       console.error("Kullanıcı durumu güncellenirken hata oluştu:", err);
@@ -89,13 +68,13 @@ export function UsersManagementView() {
       : "Belirtilmedi";
 
     return {
-      id: user.id.slice(0, 8).toUpperCase(), 
-      originalId: user.id,                  
+      id: user.id.slice(0, 8).toUpperCase(),
+      originalId: user.id,
       name: user.full_name || "İsimsiz Kullanıcı",
       email: user.email || "E-posta Yok",
       phone: user.phone || "Telefon Yok",
       joinDate: formattedDate,
-      appointments: 0, 
+      appointments: 0,
       status: user.is_approved ? "Aktif" : "Askıda",
     };
   });
@@ -137,7 +116,8 @@ export function UsersManagementView() {
           Müşteri Yönetimi
         </h1>
         <p className="text-sm text-slate-400 mt-1">
-          `profiles` tablosundaki "customer" rolüne sahip son kullanıcıların gerçek zamanlı hesap durumları.
+          `profiles` tablosundaki "customer" rolüne sahip son kullanıcıların
+          gerçek zamanlı hesap durumları.
         </p>
       </div>
 

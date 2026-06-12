@@ -17,27 +17,9 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "../../lib/supabaseClient";
+import type { Brand } from "../../types/brand";
+import type { Application } from "../../types/admin";
 
-interface Brand {
-  id: string; 
-  name: string;
-  category: string;
-  activeProducts: number;
-  totalSales: number;
-}
-
-interface Application {
-  id: string; 
-  name: string;
-  category: string;
-  requestedProducts: number;
-  date: string;
-  taxNumber: string;
-  authorizedPerson: string;
-  phone: string;
-  email: string;
-  description: string;
-}
 
 export function BrandPartnershipsView() {
   const [loading, setLoading] = useState<boolean>(true);
