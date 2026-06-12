@@ -1,4 +1,4 @@
-import  { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card } from "../../components/ui/Card";
 import {
   ShoppingBag,
@@ -45,12 +45,26 @@ export interface SupabaseOrderRow {
   total_price: number;
   payment_intent_id: string | null;
   order_date: string;
+  formatted_date: string;
   product_name: string;
   image_url: string;
   customer_name: string;
   status: OrderStatus;
   preparation_note: string;
 }
+
+const escapeHtml = (str: string): string => {
+  return str.replace(/[&<>"']/g, (match) => {
+    const escaper: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return escaper[match];
+  });
+};
 
 export const BrandOrders = () => {
   const [orders, setOrders] = useState<SupabaseOrderRow[]>([]);
@@ -62,6 +76,7 @@ export const BrandOrders = () => {
   );
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [currentBrand, setCurrentBrand] = useState<string>("Marka");
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -73,32 +88,78 @@ export const BrandOrders = () => {
       setLoading(true);
 
       const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) return;
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      let brandFilter = "";
+      let detectedBrand = "B2B Ortak";
+
+      if (session?.user) {
+        const userEmail = session.user.email?.toLowerCase() || "";
+        const metaBrand =
+          session.user.user_metadata?.brand_name?.toLowerCase() || "";
+
+        if (
+          userEmail.includes("maybelline") ||
+          metaBrand.includes("maybelline")
+        ) {
+          brandFilter = "brand_name.ilike.%maybelline%";
+          detectedBrand = "Maybelline New York";
+        } else if (
+          userEmail.includes("loreal") ||
+          userEmail.includes("l'oréal") ||
+          metaBrand.includes("loreal")
+        ) {
+          brandFilter = "brand_name.ilike.%loreal%,brand_name.ilike.%l'oréal%";
+          detectedBrand = "L'Oréal Paris";
+        } else if (
+          userEmail.includes("garnier") ||
+          metaBrand.includes("garnier")
+        ) {
+          brandFilter = "brand_name.ilike.%garnier%";
+          detectedBrand = "Garnier";
+        } else if (session.user.user_metadata?.brand_name) {
+          const rawBrand = session.user.user_metadata.brand_name;
+          brandFilter = `brand_name.ilike.%${rawBrand}%`;
+          detectedBrand = rawBrand;
+        }
+      }
+
+      setCurrentBrand(detectedBrand);
+
+      if (!brandFilter) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: productsData, error: prodError } = await supabase
+        .from("products")
+        .select("id")
+        .or(brandFilter);
+
+      if (prodError) throw prodError;
+
+      const validProductIds = (productsData || []).map((p) => p.id);
+
+      if (validProductIds.length === 0) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("product_orders")
         .select(
           `
-          id,
-          customer_id,
-          product_id,
-          quantity,
-          total_price,
-          payment_intent_id,
-          order_date,
-          status,
-          preparation_note,
-          products!inner (
-            product_name,
-            image_url,
-            brand_id
-          )
+          id, customer_id, product_id, quantity, total_price,
+          payment_intent_id, order_date, status, preparation_note,
+          products ( product_name, image_url )
         `,
         )
-        .eq("products.brand_id", user.id)
+        .in("product_id", validProductIds)
         .order("order_date", { ascending: false });
 
       if (error) throw error;
@@ -118,6 +179,8 @@ export const BrandOrders = () => {
             }
           }
 
+          const oDate = new Date(row.order_date);
+
           return {
             id: row.id,
             customer_id: row.customer_id,
@@ -126,6 +189,13 @@ export const BrandOrders = () => {
             total_price: row.total_price,
             payment_intent_id: row.payment_intent_id,
             order_date: row.order_date,
+            formatted_date:
+              oDate.toLocaleDateString("tr-TR") +
+              " " +
+              oDate.toLocaleTimeString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             product_name: productData?.product_name || "Bilinmeyen Ürün",
             image_url: imageUrl,
             customer_name: `Müşteri #${row.customer_id?.substring(0, 5) || "Uzak"}`,
@@ -144,8 +214,9 @@ export const BrandOrders = () => {
         }
       }
     } catch (err) {
-      console.error("Siparişler veritabanından çekilirken hata:", err);
-    } finally {
+      console.error("Siparişler çekilirken hata:", err);
+    }
+    {
       setLoading(false);
     }
   };
@@ -163,7 +234,10 @@ export const BrandOrders = () => {
     try {
       setIsUpdating(true);
 
-      let noteToSave = selectedOrder?.preparation_note || "";
+      const currentOrder = orders.find((o) => o.id === orderId);
+      if (!currentOrder) return;
+
+      let noteToSave = currentOrder.preparation_note || "";
       if (
         (newStatus === "preparing" || newStatus === "completed") &&
         !noteToSave
@@ -182,20 +256,27 @@ export const BrandOrders = () => {
 
       if (error) throw error;
 
+      const updatedOrder: SupabaseOrderRow = {
+        ...currentOrder,
+        status: newStatus,
+        preparation_note: noteToSave,
+      };
+
       setOrders((prevOrders) =>
         prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: newStatus, preparation_note: noteToSave }
-            : order,
+          order.id === orderId ? updatedOrder : order,
         ),
       );
 
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder((prev) =>
-          prev
-            ? { ...prev, status: newStatus, preparation_note: noteToSave }
-            : null,
-        );
+        setSelectedOrder(updatedOrder);
+      }
+
+      if (
+        newStatus === "completed" ||
+        (activeTab !== "all" && activeTab !== newStatus)
+      ) {
+        setSelectedOrder(null);
       }
 
       const statusTexts: Record<OrderStatus, string> = {
@@ -232,10 +313,15 @@ export const BrandOrders = () => {
     const doc = iframe.contentWindow?.document || iframe.contentDocument;
     if (!doc) return;
 
-    const preparationNoteText =
+    const rawNote =
       order.status === "new"
         ? "Sipariş henüz hazırlık aşamasına alınmadı."
         : order.preparation_note || "Özel talimat bulunmuyor.";
+
+    const safeProductName = escapeHtml(order.product_name);
+    const safePreparationNote = escapeHtml(rawNote);
+    const safeCustomerId = escapeHtml(order.customer_id);
+    const safeProductId = escapeHtml(order.product_id);
 
     doc.open();
     doc.write(`
@@ -246,14 +332,10 @@ export const BrandOrders = () => {
         <style>
           @page { margin: 0; }
           body {
-            margin: 0;
-            padding: 4mm;
-            width: 76mm;
-            background: #ffffff;
-            color: #000000;
+            margin: 0; padding: 4mm; width: 76mm;
+            background: #ffffff; color: #000000;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 12px; line-height: 1.4;
           }
           .text-center { text-align: center; }
           .border-bottom { border-bottom: 1px dashed #000000; padding-bottom: 8px; margin-bottom: 8px; }
@@ -276,11 +358,15 @@ export const BrandOrders = () => {
           </div>
           <div class="flex-row">
             <span><strong class="bold">Müşteri ID:</strong></span>
-            <span style="font-family: monospace; word-break: break-all; max-width: 150px; text-align: right;">${order.customer_id}</span>
+            <span style="font-family: monospace; word-break: break-all; max-width: 150px; text-align: right;">${safeCustomerId}</span>
+          </div>
+          <div class="flex-row">
+            <span><strong class="bold">Ürün ID:</strong></span>
+            <span style="font-family: monospace; word-break: break-all; max-width: 150px; text-align: right;">${safeProductId}</span>
           </div>
           <div class="flex-row">
             <span><strong class="bold">Sipariş Tar:</strong></span>
-            <span>${new Date(order.order_date).toLocaleString("tr-TR")}</span>
+            <span>${order.formatted_date}</span>
           </div>
           <div class="flex-row">
             <span><strong class="bold">Mevcut Durum:</strong></span>
@@ -289,7 +375,7 @@ export const BrandOrders = () => {
         </div>
 
         <div style="border-bottom: 1px dashed #000000; padding-bottom: 8px; margin-bottom: 8px;">
-          <span class="bold" style="display: block; font-size: 12px;">${order.product_name}</span>
+          <span class="bold" style="display: block; font-size: 12px;">${safeProductName}</span>
           <div class="flex-row" style="font-size: 11px;">
             <span>${order.quantity} Adet</span>
             <span class="bold">${order.total_price?.toLocaleString("tr-TR")} ₺</span>
@@ -299,7 +385,7 @@ export const BrandOrders = () => {
         <div style="border-bottom: 1px dashed #000000; padding-bottom: 8px; margin-bottom: 8px; font-size: 11px;">
           <span class="bold" style="display: block; font-size: 10px; letter-spacing: 0.5px;">HAZIRLANIŞ / PAKETLEME TALİMATI:</span>
           <p style="margin: 4px 0 0 0; line-height: 1.3;" class="italic">
-            ${preparationNoteText}
+            ${safePreparationNote}
           </p>
         </div>
 
@@ -368,20 +454,19 @@ export const BrandOrders = () => {
   };
 
   const filteredOrders = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
     return orders.filter((order) => {
       const currentStatus = order.status || "new";
       const matchesSearch =
-        order.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.id.toString().includes(searchQuery);
+        order.product_name?.toLowerCase().includes(query) ||
+        order.id.toString().includes(query);
 
       const matchesTab =
         activeTab === "all" ? true : currentStatus === activeTab;
       return matchesSearch && matchesTab;
     });
   }, [orders, searchQuery, activeTab]);
-
   const currentStatus = selectedOrder?.status || "new";
-
   return (
     <div className="space-y-8 relative">
       {toastMessage && (
@@ -392,12 +477,12 @@ export const BrandOrders = () => {
       )}
 
       <div>
-        <h2 className="text-3xl font-black tracking-tight text-slate-800 uppercase">
-          Gelen Sipariş Envanteri
+        <h2 className="text-3xl font-black tracking-tight text-slate-800">
+          Gelen Sipariş Envanteri ({currentBrand})
         </h2>
         <p className="text-slate-400 text-xs font-semibold mt-1">
-          Sadece size ait olan, gerçek veri şemasına tam bağlı anlık mağaza
-          sipariş ve paketleme takibi.
+          Yalnızca distribütör ağınıza yönlendirilen kurumsal ürün
+          siparişlerinin takibi.
         </p>
       </div>
 
@@ -490,7 +575,7 @@ export const BrandOrders = () => {
                         : "N/A"}
                     </td>
                     <td className="py-4 px-4 text-slate-500">
-                      {new Date(order.order_date).toLocaleDateString("tr-TR")}
+                      {order.formatted_date.split(" ")[0]}
                     </td>
                     <td className="py-4 px-4 text-slate-600">
                       {order.quantity} Adet
@@ -570,23 +655,25 @@ export const BrandOrders = () => {
               <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl space-y-2.5">
                 <div className="flex items-center gap-2 text-slate-600">
                   <User className="w-4 h-4" />
-                  <span className="text-xs font-bold">Müşteri ID:</span>
+                  <span className="text-xs font-bold">Müşteri ID:</span>{" "}
                   <span className="text-xs font-mono text-slate-500">
                     {selectedOrder.customer_id}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
                   <Hash className="w-4 h-4" />
-                  <span className="text-xs font-bold">Ürün ID:</span>
+                  <span className="text-xs font-bold">Ürün ID:</span>{" "}
                   <span className="text-xs font-mono text-slate-500">
                     {selectedOrder.product_id}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-slate-600">
                   <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-bold">Sipariş Zamanı:</span>
+                  <span className="text-xs font-bold">
+                    Sipariş Zamanı:
+                  </span>{" "}
                   <span className="text-xs font-mono text-slate-500">
-                    {new Date(selectedOrder.order_date).toLocaleString("tr-TR")}
+                    {selectedOrder.formatted_date}
                   </span>
                 </div>
               </div>

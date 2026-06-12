@@ -38,7 +38,7 @@ export const Sidebar = ({
     { id: "salon", label: "Salon Detayı", icon: Store },
     { id: "services", label: "Hizmetler", icon: Scissors },
     { id: "appointments", label: "Randevular", icon: CalendarDays },
-    { id: "emloyees", label: "Çalışanlar", icon: Users },
+    { id: "employees", label: "Çalışanlar", icon: Users },
     { id: "reviews", label: "Yorumlar", icon: MessageSquare },
   ];
 

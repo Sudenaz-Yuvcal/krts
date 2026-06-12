@@ -9,12 +9,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+const getSafeStorage = () => {
+  if (typeof window !== "undefined") {
+    return window.localStorage;
+  }
+  return undefined;
+};
+
 export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
   auth: {
     storageKey: "supabase-shared-auth-token",
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storage: window.localStorage,
+    storage: getSafeStorage(), 
+    flowType: "pkce", 
   },
 });

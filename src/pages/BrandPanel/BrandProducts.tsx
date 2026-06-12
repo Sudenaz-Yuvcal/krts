@@ -2,7 +2,19 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import type { Product } from "../../types/products";
-import { Plus, Search, SlidersHorizontal, Trash2, Loader2, Filter, X, Upload, Check, ImageIcon } from "lucide-react";
+import {
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  Loader2,
+  Filter,
+  X,
+  Upload,
+  Check,
+  ImageIcon,
+  AlertTriangle,
+} from "lucide-react";
 import { ProductTable } from "../../sections/products/product-table";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -13,7 +25,7 @@ const CATEGORIES = [
   "Parfüm",
   "Kişisel Bakım",
   "Aksesuar",
-  "Genel"
+  "Genel",
 ];
 
 interface ExtendedProduct extends Product {
@@ -47,23 +59,28 @@ export const BrandProduct = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
 
-  const [brandId, setBrandId] = useState<string | null>("00000000-0000-0000-0000-000000000000");
-  const [realBrandName, setRealBrandName] = useState<string>("Maybelline New York");
+  const [brandId, setBrandId] = useState<string | null>(null);
+  const [realBrandName, setRealBrandName] = useState<string>("Yükleniyor...");
 
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("Hepsi");
-  const [sortBy, setSortBy] = useState<"default" | "price-asc" | "price-desc" | "stock-desc">("default");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] =
+    useState<string>("Hepsi");
+  const [sortBy, setSortBy] = useState<
+    "default" | "price-asc" | "price-desc" | "stock-desc"
+  >("default");
   const [showFilterMenu, setShowFilterMenu] = useState<boolean>(false);
 
   const [modalMode, setModalMode] = useState<"add" | "edit">("add");
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [editingProduct, setEditingProduct] = useState<ExtendedProduct | null>(null);
+  const [editingProduct, setEditingProduct] = useState<ExtendedProduct | null>(
+    null,
+  );
 
   const [name, setName] = useState<string>("");
   const [stock, setStock] = useState<string>("");
-  const [purchasePrice, setPurchasePrice] = useState<string>(""); 
+  const [purchasePrice, setPurchasePrice] = useState<string>("");
   const [salePrice, setSalePrice] = useState<string>("");
-  const [category, setCategory] = useState<string>("Makyaj"); 
+  const [category, setCategory] = useState<string>("Makyaj");
   const [images, setImages] = useState<string[]>([]);
   const [isActiveStatus, setIsActiveStatus] = useState<boolean>(true);
 
@@ -82,29 +99,39 @@ export const BrandProduct = () => {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchBrandFromSupabase = async (): Promise<string> => {
+  const fetchBrandFromSupabase = async (): Promise<string | null> => {
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error("Aktif kullanıcı oturumu bulunamadı.");
+        setRealBrandName("Giriş Yapılmamış");
+        return null;
+      }
+
       const { data: brandData, error } = await supabase
-        .from("brands") 
-        .select("*")    
-        .limit(1)
+        .from("brands")
+        .select("*")
+        .eq("id", user.id)
         .maybeSingle();
 
       if (error) throw error;
 
       if (brandData) {
-        const safeBrand = brandData as SupabaseBrandItem; 
+        const safeBrand = brandData as SupabaseBrandItem;
         setBrandId(safeBrand.id);
-        setRealBrandName(safeBrand.brand_name || safeBrand.name || "Maybelline New York"); 
+        setRealBrandName(
+          safeBrand.brand_name || safeBrand.name || "İsimsiz Marka",
+        );
         return safeBrand.id;
       } else {
-        setBrandId("00000000-0000-0000-0000-000000000000");
-        setRealBrandName("Maybelline New York");
-        return "00000000-0000-0000-0000-000000000000";
+        setBrandId(user.id);
+        setRealBrandName("Yeni Mağaza");
+        return user.id;
       }
     } catch (e) {
       console.error("Error fetching brand from Supabase:", e);
-      return "00000000-0000-0000-0000-000000000000";
+      return null;
     }
   };
 
@@ -114,17 +141,22 @@ export const BrandProduct = () => {
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("brand_id", targetBrandId) 
+        .eq("brand_id", targetBrandId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       if (data) {
-        const mappedProducts: ExtendedProduct[] = (data as SupabaseProductItem[]).map((item) => {
+        const mappedProducts: ExtendedProduct[] = (
+          data as SupabaseProductItem[]
+        ).map((item) => {
           let parsedImages: string[] = [];
           if (Array.isArray(item.image_url)) {
             parsedImages = item.image_url;
-          } else if (typeof item.image_url === "string" && item.image_url.trim() !== "") {
+          } else if (
+            typeof item.image_url === "string" &&
+            item.image_url.trim() !== ""
+          ) {
             const cleanStr = item.image_url.trim();
             if (cleanStr.startsWith("[") && cleanStr.endsWith("]")) {
               try {
@@ -133,7 +165,9 @@ export const BrandProduct = () => {
                 parsedImages = [cleanStr];
               }
             } else {
-              parsedImages = cleanStr.includes(",") ? cleanStr.split(",") : [cleanStr];
+              parsedImages = cleanStr.includes(",")
+                ? cleanStr.split(",")
+                : [cleanStr];
             }
           }
 
@@ -141,14 +175,18 @@ export const BrandProduct = () => {
             id: item.id.toString(),
             name: item.product_name,
             stock: item.stock_count,
-            purchasePrice: item.purchase_price ? Number(item.purchase_price) : 0, 
-            salePrice: item.price ? Number(item.price) : 0, 
+            purchasePrice: item.purchase_price
+              ? Number(item.purchase_price)
+              : 0,
+            salePrice: item.price ? Number(item.price) : 0,
             image_url: parsedImages[0] || "",
             images: parsedImages,
-            category: item.category || "Genel", 
+            category: item.category || "Genel",
             is_active: item.is_active !== false,
             totalIncome: 0,
-            date: item.created_at ? new Date(item.created_at).toLocaleDateString("tr-TR") : "Bugün",
+            date: item.created_at
+              ? new Date(item.created_at).toLocaleDateString("tr-TR")
+              : "Bugün",
           };
         });
         setProducts(mappedProducts);
@@ -180,7 +218,7 @@ export const BrandProduct = () => {
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !brandId) return;
 
     const filesArray = Array.from(files);
 
@@ -199,7 +237,7 @@ export const BrandProduct = () => {
       for (const file of filesArray) {
         const fileExt = file.name.split(".").pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
-        const filePath = `product-images/${fileName}`;
+        const filePath = `product-images/${brandId}/${fileName}`; 
 
         const { error: uploadError } = await supabase.storage
           .from("brand-logos")
@@ -219,10 +257,13 @@ export const BrandProduct = () => {
       if (uploadedUrls.length > 0) {
         setImages((prev) => {
           const updated = [...prev, ...uploadedUrls];
-          if (updated.length >= 1) setErrors((err) => ({ ...err, image: undefined }));
+          if (updated.length >= 1)
+            setErrors((err) => ({ ...err, image: undefined }));
           return updated;
         });
-        showToast(`${uploadedUrls.length} adet ürün görseli başarıyla yüklendi.`);
+        showToast(
+          `${uploadedUrls.length} adet ürün görseli başarıyla yüklendi.`,
+        );
       }
     } catch (err: unknown) {
       alert("Görsel yüklenemedi. Storage alanını kontrol edin.");
@@ -239,15 +280,15 @@ export const BrandProduct = () => {
 
   const handleOpenAddModal = () => {
     if (!brandId) {
-      alert("Kayıtlı bir marka bulunamadığı için ürün eklenemez.");
+      alert("Kayıtlı bir marka oturumu bulunamadığı için ürün eklenemez.");
       return;
     }
     setModalMode("add");
     setName("");
     setStock("");
-    setPurchasePrice(""); 
+    setPurchasePrice("");
     setSalePrice("");
-    setCategory("Makyaj"); 
+    setCategory("Makyaj");
     setImages([]);
     setIsActiveStatus(true);
     setErrors({});
@@ -259,30 +300,44 @@ export const BrandProduct = () => {
     setEditingProduct(product);
     setName(product.name);
     setStock(product.stock.toString());
-    setPurchasePrice(product.purchasePrice ? product.purchasePrice.toString() : ""); 
+    setPurchasePrice(
+      product.purchasePrice ? product.purchasePrice.toString() : "",
+    );
     setSalePrice(product.salePrice.toString());
-    setCategory(product.category || "Makyaj"); 
+    setCategory(product.category || "Makyaj");
 
-    const productWithImages = product as ExtendedProduct & { images?: string[] };
+    const productWithImages = product as ExtendedProduct & {
+      images?: string[];
+    };
     setImages(
       Array.isArray(productWithImages.images)
         ? productWithImages.images
-        : product.image_url ? product.image_url.split(",") : []
+        : product.image_url
+          ? product.image_url.split(",")
+          : [],
     );
     setIsActiveStatus(product.is_active);
     setErrors({});
     setIsModalOpen(true);
   };
 
-  const validateForm = (stockNum: number, pPriceNum: number, sPriceNum: number) => {
+  const validateForm = (
+    stockNum: number,
+    pPriceNum: number,
+    sPriceNum: number,
+  ) => {
     const newErrors: typeof errors = {};
     if (!name.trim()) newErrors.name = "Ürün adı alanı boş bırakılamaz.";
     if (!stock) newErrors.stock = "Stok miktarı boş bırakılamaz.";
-    if (isNaN(stockNum) || stockNum < 0) newErrors.stock = "Geçerli bir stok giriniz.";
-    if (!purchasePrice) newErrors.purchasePrice = "Alış fiyatı boş bırakılamaz.";
-    if (isNaN(pPriceNum) || pPriceNum < 0) newErrors.purchasePrice = "Geçerli bir alış fiyatı giriniz.";
+    if (isNaN(stockNum) || stockNum < 0)
+      newErrors.stock = "Geçerli bir stok giriniz.";
+    if (!purchasePrice)
+      newErrors.purchasePrice = "Alış fiyatı boş bırakılamaz.";
+    if (isNaN(pPriceNum) || pPriceNum < 0)
+      newErrors.purchasePrice = "Geçerli bir alış fiyatı giriniz.";
     if (!salePrice) newErrors.salePrice = "Satış fiyatı boş bırakılamaz.";
-    if (isNaN(sPriceNum) || sPriceNum <= 0) newErrors.salePrice = "Geçerli bir satış fiyatı giriniz.";
+    if (isNaN(sPriceNum) || sPriceNum <= 0)
+      newErrors.salePrice = "Geçerli bir satış fiyatı giriniz.";
     if (images.length === 0) {
       newErrors.image = "En az 1 adet ürün fotoğrafı yüklemek zorunludur.";
     }
@@ -310,15 +365,15 @@ export const BrandProduct = () => {
       if (modalMode === "add") {
         const { error } = await supabase.from("products").insert([
           {
-            brand_id: brandId, 
+            brand_id: brandId,
             product_name: name.trim(),
             brand_name: realBrandName,
             stock_count: stockNum,
-            purchase_price: pPriceNum, 
+            purchase_price: pPriceNum,
             price: sPriceNum,
-            category: category, 
-            image_url: finalImageUrl, 
-            is_active: isActiveStatus 
+            category: category,
+            image_url: finalImageUrl,
+            is_active: isActiveStatus,
           },
         ]);
 
@@ -331,11 +386,11 @@ export const BrandProduct = () => {
             product_name: name.trim(),
             brand_name: realBrandName,
             stock_count: stockNum,
-            purchase_price: pPriceNum, 
+            purchase_price: pPriceNum,
             price: sPriceNum,
-            category: category, 
+            category: category,
             image_url: finalImageUrl,
-            is_active: isActiveStatus 
+            is_active: isActiveStatus,
           })
           .eq("id", editingProduct.id);
 
@@ -347,7 +402,9 @@ export const BrandProduct = () => {
       fetchProducts(brandId);
     } catch (err: unknown) {
       console.error("Database save error:", err);
-      alert("Ürün kaydedilirken veri tabanı hatası oluştu. Lütfen veri tabanında 'purchase_price' ve 'category' sütunlarının açıldığından emin olun.");
+      alert(
+        "Ürün kaydedilirken veri tabanı hatası oluştu. Lütfen sütun yapılandırmasını ve oturumunuzu kontrol edin.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -368,9 +425,11 @@ export const BrandProduct = () => {
 
       if (error) throw error;
       setProducts((prev) =>
-        prev.map((p) => p.id === productId ? { ...p, is_active: newStatus } : p)
+        prev.map((p) =>
+          p.id === productId ? { ...p, is_active: newStatus } : p,
+        ),
       );
-      showToast(newStatus ? "Ürün yayına aldı." : "Ürün yayından kaldırıldı.");
+      showToast(newStatus ? "Ürün yayına alındı." : "Ürün yayından kaldırıldı.");
     } catch (err) {
       console.error("Durum güncellenirken hata oluştu:", err);
     }
@@ -385,26 +444,34 @@ export const BrandProduct = () => {
         .eq("id", productToDelete);
 
       if (error) throw error;
+
+      setProducts((prevProducts) =>
+        prevProducts.filter((product) => product.id !== productToDelete),
+      );
+
       setProductToDelete(null);
-      showToast("Ürün katalogdan silindi.");
-      fetchProducts(brandId);
+      showToast("Ürün katalogdan başarıyla silindi.");
     } catch (err: unknown) {
-      alert("Ürün silinirken bir hata oluştu.");
+      console.error("Ürün silinirken hata oluştu:", err);
+      alert("Ürün silinirken bir veri tabanı hatası oluştu.");
     }
   };
 
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
     if (selectedCategoryFilter !== "Hepsi") {
       result = result.filter((p) => p.category === selectedCategoryFilter);
     }
 
-    if (sortBy === "price-asc") result = [...result].sort((a, b) => a.salePrice - b.salePrice);
-    if (sortBy === "price-desc") result = [...result].sort((a, b) => b.salePrice - a.salePrice);
-    if (sortBy === "stock-desc") result = [...result].sort((a, b) => b.stock - a.stock);
+    if (sortBy === "price-asc")
+      result = [...result].sort((a, b) => a.salePrice - b.salePrice);
+    if (sortBy === "price-desc")
+      result = [...result].sort((a, b) => b.salePrice - a.salePrice);
+    if (sortBy === "stock-desc")
+      result = [...result].sort((a, b) => b.stock - a.stock);
     return result;
   }, [products, searchQuery, selectedCategoryFilter, sortBy]);
 
@@ -423,7 +490,8 @@ export const BrandProduct = () => {
             Ürün Satış Envanteri ({realBrandName})
           </h2>
           <p className="text-slate-400 text-xs font-semibold mt-1">
-            Markaya ait perakende ürünlerin stok miktarları, fiyatlandırma politikaları ve kategori yönetimi.
+            Markaya ait perakende ürünlerin stok miktarları, fiyatlandırma
+            politikaları ve kategori yönetimi.
           </p>
         </div>
         <Button
@@ -457,7 +525,9 @@ export const BrandProduct = () => {
             >
               <option value="Hepsi">Tüm Kategoriler</option>
               {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -477,28 +547,40 @@ export const BrandProduct = () => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => { setSortBy("default"); setShowFilterMenu(false); }}
+                  onClick={() => {
+                    setSortBy("default");
+                    setShowFilterMenu(false);
+                  }}
                   className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors ${sortBy === "default" ? "bg-purple-50 text-brand-purple" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   Varsayılan
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSortBy("price-asc"); setShowFilterMenu(false); }}
+                  onClick={() => {
+                    setSortBy("price-asc");
+                    setShowFilterMenu(false);
+                  }}
                   className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors ${sortBy === "price-asc" ? "bg-purple-50 text-brand-purple" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   Satış Fiyatı (Artan)
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSortBy("price-desc"); setShowFilterMenu(false); }}
+                  onClick={() => {
+                    setSortBy("price-desc");
+                    setShowFilterMenu(false);
+                  }}
                   className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors ${sortBy === "price-desc" ? "bg-purple-50 text-brand-purple" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   Satış Fiyatı (Azalan)
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setSortBy("stock-desc"); setShowFilterMenu(false); }}
+                  onClick={() => {
+                    setSortBy("stock-desc");
+                    setShowFilterMenu(false);
+                  }}
                   className={`w-full text-left px-3 py-2 text-xs font-bold rounded-xl transition-colors ${sortBy === "stock-desc" ? "bg-purple-50 text-brand-purple" : "text-slate-600 hover:bg-slate-50"}`}
                 >
                   En Yüksek Stok
@@ -537,15 +619,20 @@ export const BrandProduct = () => {
             </button>
 
             <h3 className="text-xl font-black text-slate-800 tracking-tight mb-1">
-              {modalMode === "add" ? "Kataloğa Yeni Ürün Ekle" : "Ürün Bilgilerini Güncelle"}
+              {modalMode === "add"
+                ? "Kataloğa Yeni Ürün Ekle"
+                : "Ürün Bilgilerini Güncelle"}
             </h3>
             <p className="text-slate-400 text-xs font-semibold mb-6">
-              Lütfen ürün bilgilerini, maliyetini ve doğru kategoriyi seçtiğinizden emin olun.
+              Lütfen ürün bilgilerini, maliyetini ve doğru kategoriyi
+              seçtiğinizden emin olun.
             </p>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ürün Adı</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Ürün Adı
+                </label>
                 <input
                   type="text"
                   value={name}
@@ -553,25 +640,35 @@ export const BrandProduct = () => {
                   placeholder="Örn: Lash Sensational Maskara"
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-purple-300 focus:bg-white transition-all"
                 />
-                {errors.name && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.name}</p>}
+                {errors.name && (
+                  <p className="text-[10px] font-bold text-red-500 mt-1">
+                    {errors.name}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ürün Kategorisi</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Ürün Kategorisi
+                </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-purple-300 focus:bg-white transition-all cursor-pointer"
                 >
                   {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">Stok Miktarı</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">
+                    Stok Miktarı
+                  </label>
                   <input
                     type="number"
                     value={stock}
@@ -579,10 +676,16 @@ export const BrandProduct = () => {
                     placeholder="0"
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-purple-300 focus:bg-white transition-all"
                   />
-                  {errors.stock && <p className="text-[9px] font-bold text-red-500 mt-1">{errors.stock}</p>}
+                  {errors.stock && (
+                    <p className="text-[9px] font-bold text-red-500 mt-1">
+                      {errors.stock}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">Alış Fiyatı (₺)</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">
+                    Alış Fiyatı (₺)
+                  </label>
                   <input
                     type="number"
                     value={purchasePrice}
@@ -590,10 +693,16 @@ export const BrandProduct = () => {
                     placeholder="0.00"
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-purple-300 focus:bg-white transition-all"
                   />
-                  {errors.purchasePrice && <p className="text-[9px] font-bold text-red-500 mt-1">{errors.purchasePrice}</p>}
+                  {errors.purchasePrice && (
+                    <p className="text-[9px] font-bold text-red-500 mt-1">
+                      {errors.purchasePrice}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">Satış Fiyatı (₺)</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 whitespace-nowrap">
+                    Satış Fiyatı (₺)
+                  </label>
                   <input
                     type="number"
                     value={salePrice}
@@ -601,15 +710,21 @@ export const BrandProduct = () => {
                     placeholder="0.00"
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl px-3 py-3 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-purple-300 focus:bg-white transition-all"
                   />
-                  {errors.salePrice && <p className="text-[9px] font-bold text-red-500 mt-1">{errors.salePrice}</p>}
+                  {errors.salePrice && (
+                    <p className="text-[9px] font-bold text-red-500 mt-1">
+                      {errors.salePrice}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ürün Fotoğrafları (Maks 3)</label>
-                
+                <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Ürün Fotoğrafları (Maks 3)
+                </label>
+
                 {images.length < 3 ? (
-                  <div 
+                  <div
                     onClick={() => fileInputRef.current?.click()}
                     className="border-2 border-dashed border-slate-100 hover:border-purple-200 bg-slate-50 hover:bg-purple-50/10 rounded-2xl p-4 text-center cursor-pointer transition-all"
                   >
@@ -623,11 +738,13 @@ export const BrandProduct = () => {
                     />
                     {isUploading ? (
                       <div className="flex flex-col items-center gap-1 justify-center text-xs text-slate-400 font-bold">
-                        <Loader2 className="w-5 h-5 text-purple-600 animate-spin" /> Yükleniyor...
+                        <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />{" "}
+                        Yükleniyor...
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-1 justify-center text-xs text-slate-400 font-bold">
-                        <Upload className="w-5 h-5 text-slate-400" /> Görsel Seç ({3 - images.length} adet kaldı)
+                        <Upload className="w-5 h-5 text-slate-400" /> Görsel Seç
+                        ({3 - images.length} adet kaldı)
                       </div>
                     )}
                   </div>
@@ -637,13 +754,24 @@ export const BrandProduct = () => {
                     <span>Maksimum yükleme sınırına ulaştınız (3/3).</span>
                   </div>
                 )}
-                {errors.image && <p className="text-[10px] font-bold text-red-500 mt-1">{errors.image}</p>}
+                {errors.image && (
+                  <p className="text-[10px] font-bold text-red-500 mt-1">
+                    {errors.image}
+                  </p>
+                )}
 
                 {images.length > 0 && (
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {images.map((img, idx) => (
-                      <div key={idx} className="relative w-16 h-16 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 group shadow-2xs">
-                        <img src={img} alt="preview" className="w-full h-full object-cover" />
+                      <div
+                        key={idx}
+                        className="relative w-16 h-16 border border-slate-100 rounded-xl overflow-hidden bg-slate-50 group shadow-2xs"
+                      >
+                        <img
+                          src={img}
+                          alt="preview"
+                          className="w-full h-full object-cover"
+                        />
                         <button
                           type="button"
                           onClick={() => removeUploadedImage(idx)}
@@ -659,15 +787,21 @@ export const BrandProduct = () => {
 
               <div className="flex items-center justify-between bg-slate-50 border border-slate-100/50 p-3 rounded-2xl">
                 <div>
-                  <span className="block text-xs font-bold text-slate-700">Ürün Durumu</span>
-                  <span className="text-[10px] font-semibold text-slate-400">Ürün mağazada doğrudan yayına alınsın mı?</span>
+                  <span className="block text-xs font-bold text-slate-700">
+                    Ürün Durumu
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Ürün mağazada doğrudan yayına alınsın mı?
+                  </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsActiveStatus(!isActiveStatus)}
                   className={`w-11 h-6 rounded-full transition-colors relative focus:outline-hidden cursor-pointer ${isActiveStatus ? "bg-purple-600" : "bg-slate-200"}`}
                 >
-                  <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${isActiveStatus ? "left-6" : "left-1"}`} />
+                  <div
+                    className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow-sm ${isActiveStatus ? "left-6" : "left-1"}`}
+                  />
                 </button>
               </div>
 
@@ -700,27 +834,29 @@ export const BrandProduct = () => {
       {productToDelete && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50">
           <div className="bg-white rounded-[32px] p-8 w-full max-w-sm border border-slate-100 shadow-xl mx-4 text-center">
-            <div className="w-12 h-12 bg-red-50 border border-red-100 text-red-500 flex items-center justify-center rounded-2xl mx-auto mb-4">
-              <Trash2 className="w-5 h-5" />
+            <div className="w-12 h-12 bg-red-50 border border-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+              <AlertTriangle className="w-5 h-5" />
             </div>
-            <h3 className="text-lg font-black text-slate-800">Ürün Silinsin mi?</h3>
-            <p className="text-slate-400 text-xs font-semibold mt-1 px-2">
-              Bu işlemi gerçekleştirmek istediğinize emin misiniz? Ürün envanter kaydı tamamen silinecektir.
+            <h3 className="text-lg font-black text-slate-800 tracking-tight mb-2">
+              Ürünü Silmek İstiyor musunuz?
+            </h3>
+            <p className="text-slate-400 text-xs font-medium mb-6 leading-relaxed">
+              Bu ürünü envanterinizden sildiğinizde işlem geri alınamaz. Mağazanızdaki tüm katalog verileri kalıcı olarak kaldırılacaktır.
             </p>
-            <div className="flex gap-3 mt-6 border-t border-slate-50 pt-4">
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setProductToDelete(null)}
-                className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold py-3 px-4 rounded-xl transition-all cursor-pointer"
+                className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-500 text-xs font-bold py-3 rounded-xl transition-all cursor-pointer"
               >
-                İptal
+                Vazgeç
               </button>
               <button
                 type="button"
                 onClick={confirmDeleteProduct}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-3 px-4 rounded-xl shadow-md shadow-red-100 transition-all cursor-pointer"
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-3 rounded-xl shadow-md shadow-red-100 transition-all cursor-pointer"
               >
-                Evet, Sil
+                Evet, Kalıcı Olarak Sil
               </button>
             </div>
           </div>

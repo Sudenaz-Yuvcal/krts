@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Sidebar } from "./components/layout/Sidebar";
+import { supabase } from "./lib/supabaseClient";
 
+import { Sidebar } from "./components/layout/Sidebar";
 import { AdminHeader } from "./components/layout/AdminHeader";
-import { HairdresserHeader } from "./components/layout/HairdresserHeader";  
+import { HairdresserHeader } from "./components/layout/HairdresserHeader";
 import { BrandHeader } from "./components/layout/BrandHeader";
 
 import { Dashboard } from "./pages/HairdresserPanel/Dashboard";
@@ -28,7 +29,6 @@ interface ServiceItem {
   name: string;
   category: string;
 }
-
 interface DbShift {
   id?: string;
   day_of_week: string;
@@ -36,7 +36,6 @@ interface DbShift {
   end_time: string;
   is_active: boolean;
 }
-
 interface SelectedStaff {
   id: string | number;
   name: string;
@@ -52,24 +51,91 @@ interface SelectedStaff {
 }
 
 export default function App() {
-  const [userRole] = useState<"hairdresser" | "admin" | "brand">("brand");(
-    "brand" 
-  );
+  const [userRole, setUserRole] = useState<
+    "hairdresser" | "admin" | "brand" | null
+  >(null);
+  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const [activeTab, setActiveTab] = useState<string>("brand-dashboard");
-
-  const [selectedStaffData, setSelectedStaffData] = useState<SelectedStaff | null>(null); 
+  const [selectedStaffData, setSelectedStaffData] =
+    useState<SelectedStaff | null>(null);
   const [servicesList] = useState<ServiceItem[]>([]);
 
   useEffect(() => {
-    if (userRole === "admin") {
-      setActiveTab("admin-dashboard");
-    } else if (userRole === "brand") {
-      setActiveTab("brand-dashboard");
-    } else {
-      setActiveTab("dashboard");
-    }
-  }, [userRole]);
+    const handleAuthAndRole = async () => {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const accessToken = urlParams.get("access_token");
+        const refreshToken = urlParams.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { data: _sessionData, error: sessionError } =
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+          if (sessionError) throw sessionError;
+
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname,
+          );
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session) {
+          window.location.href = "http://localhost:3000/login"; 
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          throw new Error("Profil rolü okunamadı.");
+        }
+
+        const role = profile.role as
+          | "admin"
+          | "brand"
+          | "salon"
+          | "hairdresser";
+
+        if (role === "admin") {
+          setUserRole("admin");
+          setActiveTab("admin-dashboard");
+        } else if (role === "brand") {
+          setUserRole("brand");
+          setActiveTab("brand-dashboard");
+        } else {
+          setUserRole("hairdresser");
+          setActiveTab("dashboard");
+        }
+      } catch (err) {
+        console.error("Auth hatası:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handleAuthAndRole();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-base">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-slate-800"></div>
+      </div>
+    );
+  }
 
   const renderContent = () => {
     if (userRole === "admin") {
@@ -92,13 +158,13 @@ export default function App() {
     if (userRole === "brand") {
       switch (activeTab) {
         case "brand-dashboard":
-          return <BrandDashboard />;     
+          return <BrandDashboard />;
         case "brand-info":
-          return <BrandInfo />;   
+          return <BrandInfo />;
         case "brand-products":
-          return <BrandProducts/>
+          return <BrandProducts />;
         case "brand-orders":
-          return <BrandOrders />; 
+          return <BrandOrders />;
         default:
           return <BrandDashboard />;
       }
@@ -116,32 +182,34 @@ export default function App() {
       case "staff":
         if (selectedStaffData) {
           return (
-            <EmployeesDetail 
-              selectedStaff={selectedStaffData} 
-              allServices={servicesList} 
-              onBackClick={() => setSelectedStaffData(null)} 
+            <EmployeesDetail
+              selectedStaff={selectedStaffData}
+              allServices={servicesList}
+              onBackClick={() => setSelectedStaffData(null)}
             />
           );
         }
-        return <Dashboard />; 
+        return <Dashboard />;
       case "reviews":
         return <Reviews />;
       default:
         return <Dashboard />;
-    } 
+    }
   };
 
   return (
     <div className="min-h-screen bg-brand-base text-slate-800 flex w-full overflow-x-hidden font-sans antialiased">
-      <Sidebar
-        userRole={userRole}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+      {userRole && (
+        <Sidebar
+          userRole={userRole}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+      )}
 
       <div className="flex-1 pl-72 flex flex-col min-h-screen w-full">
         {userRole === "admin" && <AdminHeader />}
-        {userRole === "brand" && <BrandHeader  />}
+        {userRole === "brand" && <BrandHeader />}
         {userRole === "hairdresser" && <HairdresserHeader />}
 
         <main className="flex-1 px-12 pb-12 w-full pt-12">

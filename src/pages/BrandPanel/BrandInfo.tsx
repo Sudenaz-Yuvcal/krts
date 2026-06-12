@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient"; 
 import { Building2, Phone, Award, Loader2, Edit3, Save, X, Upload } from "lucide-react";
 
-const GECICI_TEST_ID = "00000000-0000-0000-0000-000000000000";
-
 export interface BrandProfile {
   id: string;
   brand_name: string;
@@ -42,7 +40,7 @@ interface BrandUpsertPayload {
 export const BrandInfo: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [brandId] = useState<string>(GECICI_TEST_ID);
+  const [brandId, setBrandId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -69,13 +67,24 @@ export const BrandInfo: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadBrandInfo = async () => {
+    const fetchUserAndBrand = async () => {
       try {
         setLoading(true);
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          setToastMessage("Hata: Lütfen önce sisteme giriş yapın.");
+          setLoading(false);
+          return;
+        }
+
+        setBrandId(user.id);
+
         const { data, error } = await supabase
           .from("brands") 
           .select("*")
-          .eq("id", brandId)
+          .eq("id", user.id)
           .maybeSingle();
 
         if (error) throw error;
@@ -98,10 +107,11 @@ export const BrandInfo: React.FC = () => {
       }
     };
 
-    loadBrandInfo();
-  }, [brandId]);
+    fetchUserAndBrand();
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!brandId) return;
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -151,6 +161,10 @@ export const BrandInfo: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!brandId) {
+      alert("Oturum bulunamadığı için kaydedilemiyor.");
+      return;
+    }
 
     const rawPhoneDigits = formData.phone.replace(/\D/g, "");
     
@@ -184,7 +198,7 @@ export const BrandInfo: React.FC = () => {
       setTimeout(() => setToastMessage(null), 3000);
     } catch (error) {
       console.error("Kaydetme hatası:", error);
-      alert("Kaydedilirken hata oluştu. Supabase bağlantısını kontrol edin.");
+      alert("Kaydedilirken hata oluştu. Lütfen oturumunuzu kontrol edin.");
     } finally {
       setIsSaving(false);
     }
@@ -210,38 +224,40 @@ export const BrandInfo: React.FC = () => {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-800">Marka Profili (Test Modu)</h2>
+          <h2 className="text-3xl font-black tracking-tight text-slate-800">Marka Profili</h2>
           <p className="text-slate-400 text-xs font-semibold mt-1">
-            Giriş yapmadan, doğrudan veritabanı üzerinden çalışma ve test alanı.
+            Kurumsal marka bilgilerini ve sistem entegrasyon detaylarını yönetin.
           </p>
         </div>
-        {!isEditMode ? (
-          <button
-            type="button"
-            onClick={() => setIsEditMode(true)}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold h-11 px-5 rounded-xl shadow-lg shadow-purple-100 transition-all cursor-pointer"
-          >
-            <Edit3 className="w-4 h-4" /> Profili Düzenle
-          </button>
-        ) : (
-          <div className="flex gap-2">
+        {brandId && (
+          !isEditMode ? (
             <button
               type="button"
-              onClick={() => setIsEditMode(false)}
-              className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold h-11 px-4 rounded-xl transition-all cursor-pointer"
+              onClick={() => setIsEditMode(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold h-11 px-5 rounded-xl shadow-lg shadow-purple-100 transition-all cursor-pointer"
             >
-              <X className="w-4 h-4" /> İptal
+              <Edit3 className="w-4 h-4" /> Profili Düzenle
             </button>
-            <button
-              type="submit"
-              form="brand-info-form"
-              disabled={isSaving || isUploading}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold h-11 px-5 rounded-xl shadow-lg shadow-emerald-100 transition-all cursor-pointer"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
-              Değişiklikleri Kaydet
-            </button>
-          </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsEditMode(false)}
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold h-11 px-4 rounded-xl transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" /> İptal
+              </button>
+              <button
+                type="submit"
+                form="brand-info-form"
+                disabled={isSaving || isUploading}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white text-xs font-bold h-11 px-5 rounded-xl shadow-lg shadow-emerald-100 transition-all cursor-pointer"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
+                Değişiklikleri Kaydet
+              </button>
+            </div>
+          )
         )}
       </div>
 
@@ -290,8 +306,8 @@ export const BrandInfo: React.FC = () => {
             <div className="flex items-center gap-2.5 text-slate-500">
               <Award className="w-4 h-4 text-purple-500" />
               <div className="text-xs font-semibold">
-                <span className="text-slate-400 block text-[10px]">Aktif Test UID</span>
-                <span className="font-mono text-[9px] bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{brandId}</span>
+                <span className="text-slate-400 block text-[10px]">Profil UID</span>
+                <span className="font-mono text-[9px] bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">{brandId || "Oturum Yok"}</span>
               </div>
             </div>
           </div>

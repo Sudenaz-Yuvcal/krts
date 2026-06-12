@@ -12,6 +12,7 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  CartesianGrid
 } from "recharts";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -34,6 +35,7 @@ interface ProductOrder {
 
 export const BrandDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
+  const [brandName, setBrandName] = useState<string>("Marka");
   
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
   const [activeBarcodes, setActiveBarcodes] = useState<number>(0);
@@ -45,18 +47,54 @@ export const BrandDashboard: React.FC = () => {
     try {
       setLoading(true);
 
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      let brandFilter = "";
+      let detectedBrand = "B2B Ortak";
+
+      if (session?.user) {
+        const userEmail = session.user.email?.toLowerCase() || "";
+        const metaBrand = session.user.user_metadata?.brand_name;
+
+        if (metaBrand) {
+          brandFilter = `brand_name.ilike.%${metaBrand}%`;
+          detectedBrand = metaBrand;
+        } else if (userEmail.includes("loreal") || userEmail.includes("l'oreal")) {
+          brandFilter = "brand_name.ilike.%loreal%,brand_name.ilike.%l'oréal%";
+          detectedBrand = "L'Oréal Paris";
+        } else if (userEmail.includes("maybelline")) {
+          brandFilter = "brand_name.ilike.%maybelline%";
+          detectedBrand = "Maybelline New York";
+        } else if (userEmail.includes("garnier")) {
+          brandFilter = "brand_name.ilike.%garnier%";
+          detectedBrand = "Garnier";
+        }
+      }
+      
+      setBrandName(detectedBrand);
+
+      if (!brandFilter) {
+        setActiveBarcodes(0);
+        setTotalRevenue(0);
+        setTotalOperations(0);
+        setChartData([]);
+        setLoading(false);
+        return;
+      }
+
       const { data: productsData, error: prodError } = await supabase
         .from("products")
         .select("id")
-        .or("brand_name.ilike.%loreal%,brand_name.ilike.%l'oréal%,brand_name.ilike.%maybelline%,brand_name.ilike.%garnier%");
+        .or(brandFilter);
 
       if (prodError) throw prodError;
 
       const validProductIds = (productsData || []).map((p) => p.id);
-      
-      setActiveBarcodes(validProductIds.length > 0 ? validProductIds.length : 124);
+      setActiveBarcodes(validProductIds.length);
 
       let brandFilteredOrders: ProductOrder[] = [];
+      
       if (validProductIds.length > 0) {
         const { data: ordersData, error: ordersError } = await supabase
           .from(ORDERS_TABLE_NAME) 
@@ -65,7 +103,7 @@ export const BrandDashboard: React.FC = () => {
           .returns<ProductOrder[]>();
 
         if (ordersError) {
-          console.warn(`"${ORDERS_TABLE_NAME}" tablosu bulunamadı veya erişilemedi. Tablo ismini kontrol edin. Teknik detay:`, ordersError.message);
+          console.warn(`"${ORDERS_TABLE_NAME}" tablosu filtrelenirken hata oluştu:`, ordersError.message);
         } else if (ordersData) {
           brandFilteredOrders = ordersData;
         }
@@ -74,25 +112,28 @@ export const BrandDashboard: React.FC = () => {
       const realRevenue = brandFilteredOrders.reduce((sum, item) => sum + Number(item.total_price || 0), 0);
       const realOperations = brandFilteredOrders.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
-      setTotalRevenue(realRevenue > 0 ? realRevenue : 1245000);
-      setTotalOperations(realOperations > 0 ? realOperations : 3840);
+      setTotalRevenue(realRevenue);
+      setTotalOperations(realOperations);
 
       const daysOfWeek = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
-      const timeline: GraphDataPoint[] = Array.from({ length: 5 }).map((_, i) => {
+      const timeline: GraphDataPoint[] = Array.from({ length: 7 }).map((_, i) => {
         const d = new Date();
-        d.setDate(d.getDate() - (4 - i) * 2);
+        d.setDate(d.getDate() - (6 - i));
+        const dateKey = d.toISOString().split("T")[0];
+
         return {
-          dateString: d.toISOString().split("T")[0],
+          dateString: dateKey,
           label: daysOfWeek[d.getDay()],
-          distributerCiro: realRevenue > 0 ? 0 : 1050000 + (i * 48750),
-          sarfiyatHacmi: realOperations > 0 ? 0 : 2200 + (i * 450),
+          distributerCiro: 0,
+          sarfiyatHacmi: 0,
         };
       });
 
-      if (brandFilteredOrders.length > 0 && realRevenue > 0) {
-        timeline.forEach(t => { t.distributerCiro = 0; t.sarfiyatHacmi = 0; });
+      if (brandFilteredOrders.length > 0) {
         brandFilteredOrders.forEach((order) => {
-          const orderDateStr = order.order_date ? order.order_date.split("T")[0] : "";
+          if (!order.order_date) return;
+          const orderDateStr = order.order_date.split("T")[0];
+          
           const match = timeline.find((t) => t.dateString === orderDateStr);
           if (match) {
             match.distributerCiro += Number(order.total_price || 0);
@@ -104,7 +145,7 @@ export const BrandDashboard: React.FC = () => {
       setChartData(timeline);
 
     } catch (err) {
-      console.error("B2B Paneli Kritik Veri Bağlantı Hatası:", err);
+      console.error("Kullanıcı bazlı veri eşleme hatası:", err);
     } finally {
       setLoading(false);
     }
@@ -118,7 +159,7 @@ export const BrandDashboard: React.FC = () => {
     return (
       <div className="min-h-100 flex flex-col items-center justify-center gap-2 text-center text-xs text-purple-600 font-bold tracking-wide">
         <Loader2 className="w-7 h-7 animate-spin" />
-        B2B Marka Paneli Şeması Doğrulanıyor...
+        Kullanıcı Yetkileri ve Marka Paneli Senkronize Ediliyor...
       </div>
     );
   }
@@ -129,15 +170,15 @@ export const BrandDashboard: React.FC = () => {
       <div className="bg-white border border-slate-100 rounded-2xl p-6 flex flex-col sm:flex-row justify-between sm:items-center gap-4 shadow-xs">
         <div>
           <h2 className="text-lg font-black tracking-tight text-slate-900 uppercase">
-            B2B Marka & Distribütör Paneli
+            {brandName} Yetkili Yönetim Paneli
           </h2>
           <p className="text-xs text-slate-400 font-medium mt-0.5">
-            L'Oréal, Maybelline ve Garnier ürünlerinin anlaşmalı salonlardaki envanter ve ciro takibi
+            Sistemde aktif olan distribütör hesabınıza ait güncel envanter, ciro ve operasyonel hacim analitiği.
           </p>
         </div>
         <div className="bg-purple-50 border border-purple-100 px-4 py-1.5 rounded-full w-fit">
           <span className="text-[10px] font-black text-purple-700 uppercase tracking-wider">
-            DİSTRİBÜTÖR AĞI: AKTİF
+            DURUM: {brandName.toUpperCase()} OTURUMU AKTİF
           </span>
         </div>
       </div>
@@ -147,13 +188,13 @@ export const BrandDashboard: React.FC = () => {
         <div className="bg-white border border-slate-100 rounded-2xl p-6 flex justify-between items-center shadow-xs">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-              Toplam Ürün Satış Cirosu
+              Marka Toplam Satış Cirosu
             </span>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-              ₺{totalRevenue.toLocaleString("tr-TR")}
+              {totalRevenue.toLocaleString("tr-TR")} ₺
             </h3>
             <div className="bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md w-fit flex items-center gap-1">
-              <span className="text-[10px] font-black text-emerald-700">↗ %14.2 Sipariş Artışı</span>
+              <span className="text-[10px] font-black text-emerald-700">↗ Canlı Veri</span>
             </div>
           </div>
           <div className="bg-emerald-50 text-emerald-600 p-2.5 rounded-xl border border-emerald-100">
@@ -164,13 +205,13 @@ export const BrandDashboard: React.FC = () => {
         <div className="bg-white border-2 border-purple-400 rounded-2xl p-6 flex justify-between items-center shadow-xs relative overflow-hidden">
           <div className="space-y-1 z-10">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-              Katalogdaki Ürün Sayısı
+              Sistemdeki Ürün Sayınız
             </span>
             <h3 className="text-2xl font-black text-purple-600 tracking-tight">
-              {activeBarcodes} {activeBarcodes === 124 ? "Aktif Barkod" : "Eşleşen Barkod"}
+              {activeBarcodes} Tanımlı Ürün
             </h3>
             <span className="text-[10px] font-bold text-slate-400 block">
-              Barkod ve Varyant Yönetimi
+              {brandName} Kataloğu
             </span>
           </div>
           <div className="bg-purple-600 text-white p-2.5 rounded-xl z-10 shadow-md shadow-purple-200">
@@ -181,13 +222,13 @@ export const BrandDashboard: React.FC = () => {
         <div className="bg-white border border-slate-100 rounded-2xl p-6 flex justify-between items-center shadow-xs">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
-              Toplam Ürün Tanıtım Seansi
+              Toplam Dağıtılan Adet
             </span>
             <h3 className="text-2xl font-black text-slate-900 tracking-tight">
-              {totalOperations.toLocaleString("tr-TR")} İşlem
+              {totalOperations.toLocaleString("tr-TR")} Ürün
             </h3>
             <span className="text-[10px] font-bold text-slate-400 block">
-              Salon İçi Canlı Ürün Sarfiyatı
+              Salon Sevk ve Çıkış Hacmi
             </span>
           </div>
           <div className="bg-purple-50 text-purple-600 p-2.5 rounded-xl border border-purple-100">
@@ -201,62 +242,92 @@ export const BrandDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div>
             <h4 className="text-xs font-black text-slate-900 uppercase tracking-tight">
-              Marka Dağıtım & Performans Endeksi
+              {brandName} Performans Grafiği
             </h4>
             <p className="text-[11px] text-slate-400 font-medium">
-              Aylık bazda sevk edilen kozmetik cirosu ve salon içi test/tanıtım adetlerinin karşılaştırması
+              Giriş yaptığınız hesaba ait son 7 günlük sevkiyat cirosu ve hacimsel adet kırılımı.
             </p>
           </div>
           <div className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
-            Aktif Görünüm: Katalog Analizi
+            Filtre: {brandName}
           </div>
         </div>
 
         <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-wider text-slate-500">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block" />
-            <span>Distribütör Cirosu</span>
+            <span>Distribütör Cirosu (Sol Eksen)</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" />
-            <span>Sarfiyat Hacmi</span>
+            <span>Sarfiyat Hacmi (Sağ Eksen)</span>
           </div>
         </div>
 
         <div className="w-full h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
-              <XAxis 
-                dataKey="label" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} 
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
-                tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} 
-              />
-              <Tooltip 
-                contentStyle={{ backgroundColor: "#0f172a", borderRadius: "12px", border: "none", color: "#fff", fontSize: "11px" }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="distributerCiro" 
-                stroke="#a855f7" 
-                strokeWidth={3} 
-                dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="sarfiyatHacmi" 
-                stroke="#22d3ee" 
-                strokeWidth={3} 
-                dot={{ r: 5, strokeWidth: 2, fill: "#fff" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {activeBarcodes === 0 ? (
+            <div className="w-full h-full flex items-center justify-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-xs text-slate-400 font-bold">
+              Bu markaya ait henüz bir ürün bulunmadığı için grafik çizilemiyor.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="label" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} 
+                />
+                <YAxis 
+                  yAxisId="left"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k ₺` : `${v} ₺`}
+                  tick={{ fill: "#a855f7", fontSize: 10, fontWeight: 700 }} 
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
+                  axisLine={false} 
+                  tickLine={false} 
+                  tickFormatter={(v) => `${v} Adet`}
+                  tick={{ fill: "#06b6d4", fontSize: 10, fontWeight: 700 }} 
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: "#0f172a", borderRadius: "12px", border: "none", color: "#fff", fontSize: "11px" }}
+                  formatter={(value: any, name: any) => {
+                    const numValue = Number(value || 0);
+                    if (name === "distributerCiro") {
+                      return [`${numValue.toLocaleString("tr-TR")} ₺`, "Distribütör Cirosu"];
+                    }
+                    if (name === "sarfiyatHacmi") {
+                      return [`${numValue} Adet`, "Sarfiyat Hacmi"];
+                    }
+                    return [numValue, String(name)];
+                  }}
+                />
+                <Line 
+                  yAxisId="left"
+                  type="monotone" 
+                  dataKey="distributerCiro" 
+                  stroke="#a855f7" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line 
+                  yAxisId="right"
+                  type="monotone" 
+                  dataKey="sarfiyatHacmi" 
+                  stroke="#22d3ee" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, strokeWidth: 2, fill: "#fff" }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
